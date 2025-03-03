@@ -27,18 +27,20 @@ def analyse():
 
     print(ticker, start_date, start_time, end_date, end_time, subreddit)
 
+# Create a frame for layout
 frame = tk.Frame(bg='blue')
 
+# Title label
 title_label = tk.Label(frame, text="SentiMEME-MLysis", font=("Arial Bold", 30), bg='blue', fg='white')
-
 title_label.grid(row=0, column=0, columnspan=2, pady=20)
 
+# Ticker label and entry
 ticker_label = tk.Label(frame, text= "Enter desired ticker:", font=("Arial Bold", 18), bg='blue', fg='white')
-ticker_entry = tk.Entry(frame)
-
 ticker_label.grid(row=1, column=0)
+ticker_entry = tk.Entry(frame)
 ticker_entry.grid(row=1, column=1, columnspan=3, pady=10)
 
+# Date range label
 range_label = tk.Label(frame, text= "Enter analysis start date:", font=("Arial Bold", 18), bg='blue', fg='white')
 range_label.grid(row=2, column=0)
 
@@ -46,21 +48,62 @@ range_label.grid(row=2, column=0)
 end_label = tk.Label(frame, text=f"End Date: {datetime.now().date()}", bg='blue', fg='white')
 
 # Date picker for start of range
-start_date_label = DateEntry(frame, date_pattern='yyyy-mm-dd')
+start_date_label = DateEntry(frame, date_pattern='yyyy-mm-dd', maxdate=datetime.now().date())
 start_date_label.grid(row=2, column=1, padx=5, pady=5)
 
 # Time for start and end of range
 start_time_label = tk.Label(frame, text=f"Start Time: {end_time}", bg='blue', fg='white')
 
+# Subreddit label and entry
 subreddit_label = tk.Label(frame, text= "Enter desired subreddit:", font=("Arial Bold", 18), bg='blue', fg='white')
 subreddit_label.grid(row=3, column=0)
 
-subreddit_entry = tk.Entry(frame)
+# Subreddit input with default 'r/' prefix
+subreddit_var = tk.StringVar(value='r/')  # Default value
+subreddit_entry = tk.Entry(frame, textvariable=subreddit_var)
 subreddit_entry.grid(row=3, column=1, columnspan=3, pady=10)
 
+
+# Prevent editing or typing before 'r/'
+def enforce_r_prefix(*args):
+    if not subreddit_var.get().startswith('r/'):
+        subreddit_var.set('r/' + subreddit_var.get().lstrip('r/'))
+
+subreddit_var.trace_add('write', enforce_r_prefix)
+
+# Prevent cursor from moving left of 'r/'
+def restrict_cursor(event):
+    # Get the current cursor position
+    cursor_index = subreddit_entry.index(tk.INSERT)
+    # Prevent cursor from moving before the 3rd character (after 'r/')
+    if cursor_index < 2:
+        subreddit_entry.icursor(2)
+
+# Prevent typing before 'r/'
+def prevent_insertion(event):
+    # Prevent text insertion before 'r/'
+    cursor_index = subreddit_entry.index(tk.INSERT)
+    if cursor_index < 2:
+        return "break"
+
+# Prevent backspace from deleting 'r/'
+def prevent_backspace(event):
+    # Prevent backspace if cursor is at or before 'r/'
+    cursor_index = subreddit_entry.index(tk.INSERT)
+    if cursor_index <= 2:
+        return "break"
+
+# Bind events to the subreddit entry
+subreddit_entry.bind("<KeyRelease>", restrict_cursor)     # Prevent cursor movement left of 'r/'
+subreddit_entry.bind("<Key>", prevent_insertion)          # Prevent insertion before 'r/'
+subreddit_entry.bind("<BackSpace>", prevent_backspace)    # Prevent backspace from deleting 'r/'
+
+# Button to run analysis
 analyse_button = tk.Button(frame, text="Analyse", font=("Arial Bold", 18), bg='white', fg='grey', command=analyse)
 analyse_button.grid(row=4, column=0, columnspan=2, pady=20)
 
+# Pack the frame
 frame.pack()
 
+# Run the application
 window.mainloop()

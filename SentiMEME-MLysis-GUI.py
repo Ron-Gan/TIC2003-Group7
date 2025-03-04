@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import *
 from tkcalendar import Calendar as cal, DateEntry
+from scripts.Numeric_Analysis_Subsystem import NumericAnalysis
+
 
 from datetime import datetime
 
@@ -21,9 +23,15 @@ def analyse():
     ticker = ticker_entry.get()
     start_date = start_date_label.get()  # Get user-selected start date
     end_date = datetime.now().date()  # Static end date as today
-    end_time = datetime.now().time().strftime("%H:%M:%S")  # Static end time as current time (formatted)
+    end_time = datetime.now().time()#.strftime("%H:%M:%S")  # Static end time as current time (formatted)
     start_time = end_time  # Set start_time to the same as end_time
     subreddit = subreddit_entry.get()
+
+    start_date = datetime.strptime(start_date,"%Y-%m-%d").date()
+    start_datetime = datetime.combine(start_date,start_time)
+    end_datetime = datetime.combine(end_date,end_time)
+
+    NumericAnalysis(start_datetime,end_datetime,ticker)
 
     print(ticker, start_date, start_time, end_date, end_time, subreddit)
 

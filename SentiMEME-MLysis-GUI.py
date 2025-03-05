@@ -2,6 +2,9 @@ import tkinter as tk
 from tkinter import *
 from tkcalendar import Calendar as cal, DateEntry
 from scripts.Numeric_Analysis_Subsystem import NumericAnalysis
+from scripts.reddit_api_fetch import RedditAPI
+from scripts.topic_model import RedditTopicModel
+from scripts.sentiment_analysis import RedditSentimentAnalysis
 
 
 from datetime import datetime
@@ -32,6 +35,33 @@ def analyse():
     end_datetime = datetime.combine(end_date,end_time)
 
     NumericAnalysis(start_datetime,end_datetime,ticker)
+
+    print("Fetching Reddit posts...")
+    reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
+    reddit_df = reddit_api.search_subreddit()
+
+    if reddit_df.empty:
+        print("No posts found for the selected criteria.")
+        return
+
+    # Perform topic modeling
+    print("Performing topic modeling...")
+    topic_model = RedditTopicModel(reddit_df)
+    topic_model.initialize_model()
+    topic_model.fit_transform()
+    topic_model.create_topic_dataframe()
+    topic_df = topic_model.get_topic_dataframe()
+
+    # Perform sentiment analysis
+    print("Performing sentiment analysis...")
+    sentiment_analysis = RedditSentimentAnalysis(topic_df)
+    sentiment_analysis.initialize_model()
+    sentiment_analysis.analyze_sentiment(batch_size=16)
+    sentiment_df = sentiment_analysis.get_sentiment_dataframe()
+
+    # Show results
+    print("\nAnalysis Completed! Here are the results:")
+    print(sentiment_df.head())
 
     print(ticker, start_date, start_time, end_date, end_time, subreddit)
 

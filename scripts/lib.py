@@ -11,7 +11,8 @@ packages = [
     "sentence-transformers",
     "torch",
     "transformers",
-    "dotenv"
+    "dotenv",
+    "requests"
 ]
 
 # Function to install missing packages

@@ -6,9 +6,9 @@ def transform_numbers(response):
     df = df.drop([0],axis=1)
     return df
 
-###  Determine Intervals used to determine time between
-###  each row in the output.
-###  Returns intervals in minutes
+""" Determine Intervals used to determine time between
+    each row in the output.
+    Returns intervals in minutes """
 def determine_interval(start,end):
     difference = end-start
     if difference < 86400:
@@ -21,8 +21,9 @@ def determine_interval(start,end):
 
 class NumericAnalysis:
     def __new__(cls, start, end, coin_name):
-        numeric_data = FetchNumericData(start, end, coin_name)
-        numeric_data = transform_numbers(numeric_data)
-        print(numeric_data)
-
-#NumericAnalysis(1740607248,1740652628,"bitcoin")
+        try:
+            numeric_data = FetchNumericData(start, end, coin_name)
+            numeric_data = transform_numbers(numeric_data)
+            print(numeric_data)
+        except:
+            raise Exception("Input Error")

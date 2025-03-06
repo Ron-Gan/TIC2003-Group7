@@ -6,7 +6,7 @@ from scripts.reddit_api_fetch import RedditAPI
 from scripts.topic_model import RedditTopicModel
 from scripts.sentiment_analysis import RedditSentimentAnalysis
 
-
+from datetime import time
 from datetime import datetime
 
 window=tk.Tk()
@@ -22,15 +22,22 @@ def get_date():
     selected_date = cal.get_date()
     print(f"Selected date: {selected_date}")
 
+def init_start_time(start_date,end_date):
+    if start_date == end_date: # Set start_time to midnight
+        start_time = time(0,0,0,0)
+    else:
+        start_time = end_time  # Set start_time to the same as end_time
+    return start_time
+
 def analyse():
     ticker = ticker_entry.get()
     start_date = start_date_label.get()  # Get user-selected start date
     end_date = datetime.now().date()  # Static end date as today
     end_time = datetime.now().time()#.strftime("%H:%M:%S")  # Static end time as current time (formatted)
-    start_time = end_time  # Set start_time to the same as end_time
+    start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    start_time = init_start_time(start_date,end_date)
     subreddit = subreddit_entry.get()
 
-    start_date = datetime.strptime(start_date,"%Y-%m-%d").date()
     start_datetime = datetime.combine(start_date,start_time)
     end_datetime = datetime.combine(end_date,end_time)
 

@@ -1,5 +1,7 @@
 import requests
+import os
 from datetime import datetime
+from dotenv import load_dotenv
 import math
 
 def convert_to_unix(date_input):
@@ -14,7 +16,7 @@ def generate_url(start,end,coin_name, purpose):
     version = "v3"
     specifics = "coins"
 
-    if purpose == "check exist":
+    if purpose == "coin list":
         url = f"{api_web}/{version}/{specifics}/list"
     elif purpose=="market data":
         specifics_2 = "market_chart"
@@ -34,12 +36,13 @@ def generate_headers(demo_key):
     return headers
 
 class FetchNumericData:
-    __api_key = "CG-kw1oj3UTnivppHg7MGt5RfVa"
+    load_dotenv()
+    __api_key = os.getenv('COINGECKO_API_KEY')
 
-    def __new__ (cls, start, end, coin_name):
+    def __new__ (cls, start, end, coin_name, purpose):
         start = convert_to_unix(start)
         end = convert_to_unix(end)
-        url = generate_url(start,end,coin_name)
+        url = generate_url(start,end,coin_name,purpose)
         headers = generate_headers(cls.__api_key)
         response = requests.get(url, headers=headers)
 

@@ -22,7 +22,7 @@ def get_date():
     selected_date = cal.get_date()
     print(f"Selected date: {selected_date}")
 
-def init_start_time(start_date,end_date):
+def init_start_time(start_date,end_date,end_time):
     if start_date == end_date: # Set start_time to midnight
         start_time = time(0,0,0,0)
     else:
@@ -35,13 +35,13 @@ def analyse():
     end_date = datetime.now().date()  # Static end date as today
     end_time = datetime.now().time()#.strftime("%H:%M:%S")  # Static end time as current time (formatted)
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-    start_time = init_start_time(start_date,end_date)
+    start_time = init_start_time(start_date,end_date,end_time)
     subreddit = subreddit_entry.get()
 
     start_datetime = datetime.combine(start_date,start_time)
     end_datetime = datetime.combine(end_date,end_time)
 
-    NumericAnalysis(start_datetime,end_datetime,ticker)
+    NumericAnalysis(start_datetime,end_datetime,ticker, "market data")
 
     print("Fetching Reddit posts...")
     reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
@@ -104,11 +104,11 @@ subreddit_label = tk.Label(frame, text= "Enter desired subreddit:", font=("Arial
 subreddit_label.grid(row=3, column=0)
 
 # Subreddit input with default 'r/' prefix
-subreddit_var = tk.StringVar(value='r/')  # Default value
-subreddit_entry = tk.Entry(frame, textvariable=subreddit_var)
+#subreddit_var = tk.StringVar(value='r/')  # Default value
+subreddit_entry = tk.Entry(frame)
 subreddit_entry.grid(row=3, column=1, columnspan=3, pady=10)
 
-
+"""
 # Prevent editing or typing before 'r/'
 def enforce_r_prefix(*args):
     if not subreddit_var.get().startswith('r/'):
@@ -142,6 +142,8 @@ def prevent_backspace(event):
 subreddit_entry.bind("<KeyRelease>", restrict_cursor)     # Prevent cursor movement left of 'r/'
 subreddit_entry.bind("<Key>", prevent_insertion)          # Prevent insertion before 'r/'
 subreddit_entry.bind("<BackSpace>", prevent_backspace)    # Prevent backspace from deleting 'r/'
+"""
+
 
 # Button to run analysis
 analyse_button = tk.Button(frame, text="Analyse", font=("Arial Bold", 18), bg='white', fg='grey', command=analyse)

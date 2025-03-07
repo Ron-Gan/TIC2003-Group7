@@ -20,9 +20,9 @@ def determine_interval(start,end):
     return intervals
 
 class NumericAnalysis:
-    def __new__(cls, start, end, coin_name):
+    def __new__(cls, start, end, coin_name, purpose):
         try:
-            numeric_data = FetchNumericData(start, end, coin_name)
+            numeric_data = FetchNumericData(start, end, coin_name, purpose)
             numeric_data = transform_numbers(numeric_data)
             print(numeric_data)
         except:

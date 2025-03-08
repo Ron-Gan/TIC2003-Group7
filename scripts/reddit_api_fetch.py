@@ -5,7 +5,7 @@ import pandas as pd
 import time
 from datetime import datetime, timezone
 from dotenv import load_dotenv
-import prawcore.exceptions 
+import prawcore.exceptions  
 
 class RedditAPI:
     def __init__(self, subreddit: str, coin_tinker: list, start_datetime: datetime, end_datetime: datetime):
@@ -13,7 +13,7 @@ class RedditAPI:
         Initialize the RedditAPI class with subreddit, coin keywords, and datetime range.
         """
         self.subreddit_name = subreddit
-        self.coin_tinker = coin_tinker
+        self.coin_ticker = self.standardize_coin_ticker(coin_tinker)
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
         self.reddit = self.create_reddit_instance()
@@ -27,41 +27,63 @@ class RedditAPI:
             client_id=os.getenv('CLIENT_ID'),
             client_secret=os.getenv('CLIENT_SECRET'),
             user_agent=os.getenv('USER_AGENT'),
-            username=os.getenv('USERN'),  
+            username=os.getenv('USERN'),
             password=os.getenv('PASSWORD')
         )
         return reddit
+    
+    def standardize_coin_ticker(self, coin_ticker_list: list) -> list:
+
+        if not isinstance(coin_ticker_list, list) or not coin_ticker_list:
+            raise ValueError("Invalid input. coin_ticker_list must be a non-empty list of strings.")
+        
+        standardized_tickers = []
+        
+        for ticker in coin_ticker_list:
+            if not isinstance(ticker, str) or not ticker.strip():
+                raise ValueError(f"Invalid ticker '{ticker}'. Each element must be a non-empty string.")
+            
+            standardized_tickers.extend([ticker.lower(), ticker.upper(), ticker.title()])
+
+        return standardized_tickers
+
 
     def search_subreddit(self):
         """
-        Search the subreddit for posts related to the given coin_tinker keywords
-        within the specified start_datetime and end_datetime range.
+        Retrieve posts from the subreddit within the specified start_datetime and end_datetime range.
         """
         search_results = []
         start_timestamp = self.start_datetime.timestamp()
         end_timestamp = self.end_datetime.timestamp()
 
-        if not self.coin_tinker or all(not keyword.strip() for keyword in self.coin_tinker):
+        if not self.coin_ticker or all(not keyword.strip() for keyword in self.coin_ticker):
             print("Error: No valid keywords provided.")
             return pd.DataFrame()
 
-        for keyword in self.coin_tinker:
+        for keyword in self.coin_ticker:
+            posts = []  # Initialize posts to avoid undefined variable error
+
             try:
                 # Ensure keyword is valid
                 if not isinstance(keyword, str) or len(keyword.strip()) == 0:
                     print(f"Skipping invalid keyword: {keyword}")
                     continue
 
-                print(f"Searching for keyword: {keyword} in r/{self.subreddit_name}")
+                print(f"Fetching latest posts in r/{self.subreddit_name} and filtering by keyword: {keyword}")
 
-                # Fetch posts with retries in case of API failure
+                # Fetch latest posts instead of using `.search()`
                 retry_attempts = 3
                 for attempt in range(retry_attempts):
                     try:
-                        posts = list(self.subreddit.search(query=keyword, limit=100))  # Fetch posts
+                        posts = list(self.subreddit.new(limit=1000))  # Fetch latest posts
+                        print(f"Found {len(posts)} posts in r/{self.subreddit_name}")
                         if not posts:
                             print(f"No results for '{keyword}' in r/{self.subreddit_name}.")
                         break  # Exit retry loop if successful
+                    except prawcore.exceptions.BadRequest:
+                        print(f"Bad request error for subreddit '{self.subreddit_name}'. Skipping.")
+                        posts = []
+                        break
                     except prawcore.exceptions.RequestException as e:
                         print(f"API request failed (Attempt {attempt+1}/{retry_attempts}): {e}")
                         time.sleep(10)  # Wait before retrying
@@ -70,13 +92,14 @@ class RedditAPI:
                         time.sleep(30)  # Wait longer if rate-limited
                     except Exception as e:
                         print(f"Unexpected error: {e}")
-                        break  # Stop retrying on unknown errors
+                        posts = []
+                        break
 
                 for post in posts:
-                    post_timestamp = post.created_utc  # Use correct timestamp field
+                    post_timestamp = post.created_utc  
 
-                    # Filter posts based on the selected time range
-                    if start_timestamp <= post_timestamp <= end_timestamp:
+                    # Filter posts based on time range and keyword presence
+                    if start_timestamp <= post_timestamp <= end_timestamp and keyword.lower() in post.title.lower():
                         search_results.append({
                             'id': post.id,
                             'title': post.title,

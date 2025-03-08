@@ -1,5 +1,7 @@
 import pandas as pd
 from bertopic import BERTopic
+from umap import UMAP
+from hdbscan import HDBSCAN
 from sentence_transformers import SentenceTransformer
 
 class RedditTopicModel:
@@ -18,10 +20,27 @@ class RedditTopicModel:
 
     def initialize_model(self):
         """
-        Initializes BERTopic with an embedding model suitable for social media text.
+        Dynamically initializes BERTopic with optimized parameters for small and large datasets.
         """
         embedding_model = SentenceTransformer(self.model_name)
-        self.topic_model = BERTopic(embedding_model=embedding_model)
+        dataset_size = len(self.df)
+
+        if dataset_size < 10:  
+            print("🔹 Using small dataset optimization")
+            umap_model = UMAP(n_components=2, n_neighbors=2, min_dist=0.1, metric="cosine")
+            hdbscan_model = HDBSCAN(min_cluster_size=2, min_samples=1)
+        else:  
+            print("🔹 Using large dataset optimization")
+            umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.1, metric="cosine")
+            hdbscan_model = HDBSCAN(min_cluster_size=5, min_samples=5)
+
+        
+        self.topic_model = BERTopic(
+            embedding_model=embedding_model,
+            umap_model=umap_model,
+            hdbscan_model=hdbscan_model,
+            nr_topics="auto"
+        )
 
     def fit_transform(self):
         """
@@ -30,8 +49,15 @@ class RedditTopicModel:
         if self.topic_model is None:
             raise ValueError("Topic model is not initialized. Call initialize_model() first.")
         
+        dataset_size = len(self.df)
+        if dataset_size == 0:
+            raise ValueError("Dataframe is empty. Ensure you have retrieved valid Reddit posts.")
+        
+        print(f"🔹 Running BERTopic on {dataset_size} Reddit posts...")
+
         # Transforming the selftext column
         self.topics, self.probs = self.topic_model.fit_transform(self.df["selftext"].astype(str))
+
 
     def create_topic_dataframe(self):
         """
@@ -39,7 +65,7 @@ class RedditTopicModel:
         """
         if self.topics is None:
             raise ValueError("Topics have not been generated. Call fit_transform() first.")
-        
+
         self.topic_df = pd.DataFrame({"topic": self.topics, "selftext": self.df["selftext"]})
 
     def get_topic_dataframe(self):

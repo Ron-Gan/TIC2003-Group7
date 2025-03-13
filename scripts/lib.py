@@ -12,7 +12,8 @@ packages = [
     "torch",
     "transformers",
     "dotenv",
-    "requests"
+    "requests",
+    "tzlocal"
 ]
 
 # Function to install missing packages

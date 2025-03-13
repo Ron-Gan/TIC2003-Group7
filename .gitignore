@@ -1,5 +1,7 @@
 # Ignore environment variables file
 .env
+Number_exported_data.csv
+Text_exported_data.csv
 
 # Ignore compiled Python files
 __pycache__/

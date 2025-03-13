@@ -1,29 +1,46 @@
 import pandas as pd
-from scripts.coingecko_api_fetch import FetchNumericData
+from datetime import datetime
+from tzlocal import get_localzone
+import math
+from scripts.coingecko_api_fetch import CoingeckoFetchAPI
 
-def transform_numbers(response):
-    df = pd.DataFrame(response.json()['prices'])
-    df = df.drop([0],axis=1)
-    return df
+"""
+NumericSubsystem should only be called to extract
+historical coin data.
+"""
+class NumericSubsystem:
+    def __init__(self, start, end, coin_name, purpose):
+        self.start = datetime.timestamp(start)
+        self.end = datetime.timestamp(end)
+        self.coin_name = coin_name
+        self.purpose = purpose
 
-""" Determine Intervals used to determine time between
-    each row in the output.
-    Returns intervals in minutes """
-def determine_interval(start,end):
-    difference = end-start
-    if difference < 86400:
-        intervals = 5
-    elif 86400 < difference < 7776000:
-        intervals = 60
-    else:
-        intervals = 24*60
-    return intervals
+    def get_numeric_data_df(self):
+        return self.numeric_data_df
 
-class NumericAnalysis:
-    def __new__(cls, start, end, coin_name, purpose):
+    """ 
+    Transforms data in dataframe, and add labels accordingly. 
+    Mainly Timestamp conversion.
+    """
+    def transform_numbers(self):
+        response = self.numeric_data_df
+        df = pd.DataFrame(response['prices'])
+        df = df.rename(columns={1: 'Price'})
+        df = df.rename(columns={0: 'Timestamp'})
+        local_tz = get_localzone()  # Detect OS timezone
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"], unit="ms")  # Convert Unix timestamp
+        df["Timestamp"] = df["Timestamp"].dt.tz_localize("UTC").dt.tz_convert(local_tz)
+        self.numeric_data_df = df
+
+    # Converts response into dataframe
+    def convert_df(self):
+        self.numeric_data_df = self.response.json()
+        self.transform_numbers()
+        print(self.numeric_data_df)
+
+    # Call CoingeckoAPI
+    def extract_data(self):
         try:
-            numeric_data = FetchNumericData(start, end, coin_name, purpose)
-            numeric_data = transform_numbers(numeric_data)
-            print(numeric_data)
+            self.response = CoingeckoFetchAPI(self.start, self.end, self.coin_name, self.purpose).retrieve_response()
         except:
-            raise Exception("Input Error")
+            raise ValueError("Input Error")

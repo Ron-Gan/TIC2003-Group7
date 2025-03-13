@@ -13,7 +13,7 @@ class RedditAPI:
         Initialize the RedditAPI class with subreddit, coin keywords, and datetime range.
         """
         self.subreddit_name = subreddit
-        self.coin_ticker = self.standardize_coin_ticker(coin_tinker)
+        self.coin_ticker = coin_tinker
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
         self.reddit = self.create_reddit_instance()
@@ -31,22 +31,6 @@ class RedditAPI:
             password=os.getenv('PASSWORD')
         )
         return reddit
-    
-    def standardize_coin_ticker(self, coin_ticker_list: list) -> list:
-
-        if not isinstance(coin_ticker_list, list) or not coin_ticker_list:
-            raise ValueError("Invalid input. coin_ticker_list must be a non-empty list of strings.")
-        
-        standardized_tickers = []
-        
-        for ticker in coin_ticker_list:
-            if not isinstance(ticker, str) or not ticker.strip():
-                raise ValueError(f"Invalid ticker '{ticker}'. Each element must be a non-empty string.")
-            
-            standardized_tickers.extend([ticker.lower(), ticker.upper(), ticker.title()])
-
-        return standardized_tickers
-
 
     def search_subreddit(self):
         """

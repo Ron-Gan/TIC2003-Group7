@@ -8,6 +8,7 @@ libraries = [
     "dotenv",
     "pandas",
     "os",
+    "tzlocal",
     "json",
     "praw",
     "time",

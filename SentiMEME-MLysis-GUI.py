@@ -122,7 +122,7 @@ def update_dropdown(event=None):
     prefix = ticker_var.get()
     dropdown_listbox.delete(0, tk.END)  # Clear the current list
 
-    if prefix == "":
+    if prefix == "" or prefix == "Search for a ticker":
         for coin in coinlist:
             dropdown_listbox.insert(tk.END, coin)  # Show all options if empty
     else:
@@ -154,10 +154,24 @@ def select_ticker(event=None):
         ticker_var.set(selected)
     hide_dropdown()
 
+def on_click(event):
+    """Remove placeholder text when the user clicks inside the entry box."""
+    if ticker_var.get() == "Search for a ticker":
+        ticker_var.set("")
+
+def on_focus_out(event):
+    """Restore placeholder text if the entry is left empty."""
+    if ticker_var.get().strip() == "":
+        ticker_var.set("Search for a ticker")
+
 # Create an Entry widget for typing
 ticker_entry = tk.Entry(frame, textvariable=ticker_var)
-ticker_entry.grid(row=1, column=1, columnspan=3, pady=10)
+ticker_entry.grid(row=1, column=1, columnspan=8, pady=10)
 ticker_entry.insert(0, "Search for a ticker")  # Default value
+
+# Bind placeholder logic
+ticker_entry.bind("<FocusIn>", on_click)
+ticker_entry.bind("<FocusOut>", on_focus_out)
 
 # Bind the update_dropdown function to the search input
 ticker_entry.bind("<KeyRelease>", update_dropdown)

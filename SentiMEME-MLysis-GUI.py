@@ -13,7 +13,7 @@ from datetime import datetime
 
 window=tk.Tk()
 window.title("SentiMEME-MLysis")
-window.geometry('500x300')
+window.geometry('800x500')
 window.configure(background='blue')
 
 # Define end date and end time globally
@@ -35,6 +35,23 @@ def process_ticker(ticker):
     ticker = ticker.split(' ')
     ticker[1]=ticker[1][1:-1]
     return ticker
+
+def check_fields():
+    ticker = ticker_var.get().strip()
+    subreddit = subreddit_var.get().strip()
+    start_date = start_date_label.get()
+
+    valid_ticker = ticker and ticker != "Search for a ticker"
+    valid_subreddit = subreddit.startswith("r/") and len(subreddit) > 2
+    valid_start_date = bool(start_date)
+
+    if valid_ticker and valid_subreddit and valid_start_date:
+        analyse_button.config(state="normal", bg='white', fg='green')
+    else:
+        analyse_button.config(state="disabled", bg='light grey', fg='dark grey')
+
+    # Schedule the next check
+    window.after(300, check_fields)
 
 def analyse():
     ticker = process_ticker(ticker_entry.get())
@@ -122,7 +139,7 @@ def update_dropdown(event=None):
     prefix = ticker_var.get()
     dropdown_listbox.delete(0, tk.END)  # Clear the current list
 
-    if prefix == "" or prefix == "Search for a ticker":
+    if prefix == "":
         for coin in coinlist:
             dropdown_listbox.insert(tk.END, coin)  # Show all options if empty
     else:
@@ -159,19 +176,19 @@ def on_click(event):
     if ticker_var.get() == "Search for a ticker":
         ticker_var.set("")
 
-def on_focus_out(event):
-    """Restore placeholder text if the entry is left empty."""
-    if ticker_var.get().strip() == "":
-        ticker_var.set("Search for a ticker")
+#def on_focus_out(event):
+#    """Restore placeholder text if the entry is left empty."""
+#    if ticker_var.get().strip() == "":
+#        ticker_var.set("Search for a ticker")
 
 # Create an Entry widget for typing
 ticker_entry = tk.Entry(frame, textvariable=ticker_var)
-ticker_entry.grid(row=1, column=1, columnspan=8, pady=10)
+ticker_entry.grid(row=1, column=1, columnspan=3, pady=10)
 ticker_entry.insert(0, "Search for a ticker")  # Default value
 
 # Bind placeholder logic
 ticker_entry.bind("<FocusIn>", on_click)
-ticker_entry.bind("<FocusOut>", on_focus_out)
+#ticker_entry.bind("<FocusOut>", on_focus_out)
 
 # Bind the update_dropdown function to the search input
 ticker_entry.bind("<KeyRelease>", update_dropdown)
@@ -193,7 +210,17 @@ range_label.grid(row=2, column=0)
 end_label = tk.Label(frame, text=f"End Date: {datetime.now().date()}", bg='blue', fg='white')
 
 # Date picker for start of range
-start_date_label = DateEntry(frame, date_pattern='yyyy-mm-dd', maxdate=datetime.now().date())
+from datetime import timedelta
+
+today = datetime.now().date()
+one_year_ago = today - timedelta(days=365)
+
+start_date_label = DateEntry(
+    frame,
+    date_pattern='yyyy-mm-dd',
+    mindate=one_year_ago,
+    maxdate=today
+)
 start_date_label.grid(row=2, column=1, padx=5, pady=5)
 
 # Time for start and end of range
@@ -243,11 +270,13 @@ subreddit_entry.bind("<Key>", prevent_insertion)          # Prevent insertion be
 subreddit_entry.bind("<BackSpace>", prevent_backspace)    # Prevent backspace from deleting 'r/'
 
 # Button to run analysis
-analyse_button = tk.Button(frame, text="Analyse", font=("Arial Bold", 18), bg='white', fg='grey', command=analyse)
+analyse_button = tk.Button(frame, text="Analyse", font=("Arial Bold", 18), state="disabled", bg='light grey', fg='dark grey', command=analyse)
 analyse_button.grid(row=4, column=0, columnspan=2, pady=20)
 
 # Pack the frame
 frame.pack()
+
+check_fields()
 
 # Run the application
 window.mainloop()

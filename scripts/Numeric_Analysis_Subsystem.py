@@ -32,10 +32,25 @@ class NumericSubsystem:
         df["Timestamp"] = df["Timestamp"].dt.tz_localize("UTC").dt.tz_convert(local_tz)
         self.numeric_data_df = df
 
+    """
+    Additional functions to transform data, to ease integration into Dashboard
+    """
+    def extract_date_time(self, df):
+        df["Timestamp"] = df["Timestamp"].astype(str)
+        time_col = df["Timestamp"].str.split(".").str.get(0)
+        date_col = time_col.str.split(" ").str.get(0)
+        time_col = time_col.str.split(" ").str.get(1)
+        df.insert(1, "Date", date_col)
+        df.insert(2, "Time", time_col)
+        return df
+
     # Converts response into dataframe
     def convert_df(self):
         self.numeric_data_df = self.response.json()
         self.transform_numbers()
+        numeric_df = self.numeric_data_df
+        numeric_df.pipe(self.extract_date_time)
+        self.numeric_data_df = numeric_df
         print(self.numeric_data_df)
 
     # Call CoingeckoAPI

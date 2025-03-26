@@ -1,10 +1,11 @@
 import os
-import json
 import praw
 import pandas as pd
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, time
 from dotenv import load_dotenv
+import prawcore
+from praw.models import MoreComments
 import prawcore.exceptions  
 
 class RedditAPI:
@@ -35,6 +36,7 @@ class RedditAPI:
     def search_subreddit(self):
         """
         Retrieve posts from the subreddit within the specified start_datetime and end_datetime range.
+        Extracts relevant post data and top-level comments (up to 5 per post).
         """
         search_results = []
         start_timestamp = self.start_datetime.timestamp()
@@ -60,7 +62,7 @@ class RedditAPI:
                 for attempt in range(retry_attempts):
                     try:
                         posts = list(self.subreddit.new(limit=1000))  # Fetch latest posts
-                        print(f"Found {len(posts)} posts in r/{self.subreddit_name}")
+                        # print(f"Found {len(posts)} posts in r/{self.subreddit_name}")
                         if not posts:
                             print(f"No results for '{keyword}' in r/{self.subreddit_name}.")
                         break  # Exit retry loop if successful
@@ -84,6 +86,14 @@ class RedditAPI:
 
                     # Filter posts based on time range and keyword presence
                     if start_timestamp <= post_timestamp <= end_timestamp and keyword.lower() in post.title.lower():
+                        # Extract comments
+                        try:
+                            post.comments.replace_more(limit=0)  # Remove MoreComments
+                            top_comments = [comment.body for comment in post.comments[:5]]  # Top 5 comments
+                        except Exception as e:
+                            print(f"Failed to fetch comments for post {post.id}: {e}")
+                            top_comments = []
+
                         search_results.append({
                             'id': post.id,
                             'title': post.title,
@@ -93,11 +103,12 @@ class RedditAPI:
                             'ups': getattr(post, 'ups', 0),
                             'downs': getattr(post, 'downs', 0),
                             'score': getattr(post, 'score', 0),
+                            'comments': top_comments  # Store list of comments
                         })
 
             except Exception as e:
                 print(f"Error searching subreddit for keyword '{keyword}': {e}")
 
         return pd.DataFrame(search_results) if search_results else pd.DataFrame(columns=[
-            'id', 'title', 'selftext', 'created', 'upvote_ratio', 'ups', 'downs', 'score'
+            'id', 'title', 'selftext', 'created', 'upvote_ratio', 'ups', 'downs', 'score', 'comments'
         ])

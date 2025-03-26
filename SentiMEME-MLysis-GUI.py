@@ -78,7 +78,7 @@ def analyse():
     Text Analysis Portion
     """
     print("Fetching Reddit posts...")
-    reddit_api = RedditAPI(subreddit, [ticker[1]], start_datetime, end_datetime)
+    reddit_api = RedditAPI(subreddit, [ticker[0]], start_datetime, end_datetime)
     reddit_df = reddit_api.search_subreddit()
 
     if reddit_df.empty:
@@ -90,7 +90,7 @@ def analyse():
     topic_model = RedditTopicModel(reddit_df)
     topic_model.initialize_model()
     topic_model.fit_transform()
-    topic_model.create_topic_dataframe()
+    topic_model.process_topics()
     topic_df = topic_model.get_topic_dataframe()
 
     # Perform sentiment analysis
@@ -98,6 +98,7 @@ def analyse():
     sentiment_analysis = RedditSentimentAnalysis(topic_df)
     sentiment_analysis.initialize_model()
     sentiment_analysis.analyze_sentiment(batch_size=16)
+    sentiment_analysis.finalize_sentiment_dataframe()
     ExportCSV(sentiment_analysis)
     print("Analysis Completed.")
 

@@ -2,7 +2,7 @@ import os
 import praw
 import pandas as pd
 import time
-from datetime import datetime, timezone, date, time
+from datetime import datetime, timezone, timedelta, date, time
 from dotenv import load_dotenv
 import prawcore
 from praw.models import MoreComments
@@ -98,7 +98,7 @@ class RedditAPI:
                             'id': post.id,
                             'title': post.title,
                             'selftext': getattr(post, 'selftext', ''),  # Handle missing text
-                            'created': datetime.fromtimestamp(post_timestamp, tz=timezone.utc),
+                            'created': datetime.fromtimestamp(post_timestamp, tz=timezone.utc).astimezone(timezone(timedelta(hours=8))),
                             'upvote_ratio': getattr(post, 'upvote_ratio', 0),
                             'ups': getattr(post, 'ups', 0),
                             'downs': getattr(post, 'downs', 0),

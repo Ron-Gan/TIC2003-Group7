@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import *
-from tkcalendar import Calendar as cal, DateEntry
+from tkinter import Toplevel, StringVar, Listbox, Scrollbar, Entry, Label, Button
+from tkcalendar import Calendar, DateEntry
+from datetime import datetime, time, timedelta
 from scripts.coin_list_generator import CoinListGenerator
 from scripts.export_csv import ExportCSV
 from scripts.Numeric_Analysis_Subsystem import NumericSubsystem
@@ -8,276 +9,199 @@ from scripts.reddit_api_fetch import RedditAPI
 from scripts.topic_model import RedditTopicModel
 from scripts.sentiment_analysis import RedditSentimentAnalysis
 
-from datetime import time
-from datetime import datetime
 
-window=tk.Tk()
-window.title("SentiMEME-MLysis")
-window.geometry('800x500')
-window.configure(background='blue')
+class SentiMemeApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("SentiMEME-MLysis")
+        self.root.geometry('800x500')
+        self.root.configure(background='blue')
 
-# Define end date and end time globally
-end_date = datetime.now().date()  # Static end date as today
-end_time = datetime.now().time().strftime("%H:%M:%S")  # Static end time as current time (formatted)
+        self.end_date = datetime.now().date()
+        self.end_time = datetime.now().time().strftime("%H:%M:%S")
 
-def get_date():
-    selected_date = cal.get_date()
-    print(f"Selected date: {selected_date}")
+        self.setup_ui()
 
-def init_start_time(start_date,end_date,end_time):
-    if start_date == end_date: # Set start_time to midnight
-        start_time = time(0,0,0,0)
-    else:
-        start_time = end_time  # Set start_time to the same as end_time
-    return start_time
+    def setup_ui(self):
+        self.frame = tk.Frame(self.root, bg='blue')
+        self.frame.pack(padx=20, pady=20)
 
-def process_ticker(ticker):
-    ticker = ticker.split(' ')
-    ticker[1]=ticker[1][1:-1]
-    return ticker
+        # Configure grid columns for consistent alignment
+        self.frame.columnconfigure(0, weight=1, minsize=250)  # Label column
+        self.frame.columnconfigure(1, weight=3)  # Entry column
+        self.frame.columnconfigure(2, weight=1)  # Button column (for calendar)
 
-def check_fields():
-    ticker = ticker_var.get().strip()
-    subreddit = subreddit_var.get().strip()
-    start_date = start_date_label.get()
+        # Title
+        Label(self.frame, text="SentiMEME-MLysis", font=("Arial Bold", 30),
+              bg='blue', fg='white').grid(row=0, column=0, columnspan=3, pady=20)
 
-    valid_ticker = ticker and ticker != "Search for a ticker"
-    valid_subreddit = subreddit.startswith("r/") and len(subreddit) > 2
-    valid_start_date = bool(start_date)
+        # Ticker Selection
+        Label(self.frame, text="Select Ticker:", font=("Arial Bold", 18),
+              bg='blue', fg='white').grid(row=1, column=0, sticky='w', pady=5)
 
-    if valid_ticker and valid_subreddit and valid_start_date:
-        analyse_button.config(state="normal", bg='white', fg='green')
-    else:
-        analyse_button.config(state="disabled", bg='light grey', fg='dark grey')
+        self.ticker_var = StringVar(value="Search for a ticker")
+        self.coinlist = CoinListGenerator().get_list()
 
-    # Schedule the next check
-    window.after(300, check_fields)
+        self.ticker_entry = Entry(self.frame, textvariable=self.ticker_var, font=("Arial", 12))
+        self.ticker_entry.grid(row=1, column=1, columnspan=2, sticky='ew', pady=5, padx=5)
+        self.ticker_entry.bind("<FocusIn>", self.on_click)
+        self.ticker_entry.bind("<KeyRelease>", self.update_dropdown)
+        self.ticker_entry.bind("<FocusOut>", self.hide_dropdown)
 
-def analyse():
-    ticker = process_ticker(ticker_entry.get())
-    ticker_id = ticker[0]
-    start_date = start_date_label.get()  # Get user-selected start date
-    end_date = datetime.now().date()  # Static end date as today
-    end_time = datetime.now().time()#.strftime("%H:%M:%S")  # Static end time as current time (formatted)
-    start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-    start_time = init_start_time(start_date,end_date,end_time)
-    subreddit = subreddit_entry.get()
-    subreddit = subreddit[2:]  # Remove 'r/' from the output
+        # Date Selection
+        Label(self.frame, text="Analysis start date:", font=("Arial Bold", 18),
+              bg='blue', fg='white').grid(row=2, column=0, sticky='w', pady=5)
 
-    start_datetime = datetime.combine(start_date,start_time)
-    end_datetime = datetime.combine(end_date,end_time)
+        self.date_frame = tk.Frame(self.frame, bg='blue')
+        self.date_frame.grid(row=2, column=1, sticky='ew')
 
-    """
-    Numeric Analysis Portion
-    """
-    number_analysis = NumericSubsystem(start_datetime,end_datetime,ticker_id, "market data")
-    number_analysis.extract_data()
-    ExportCSV(number_analysis)
+        self.start_date_var = StringVar()
+        self.start_date_entry = Entry(self.date_frame, textvariable=self.start_date_var,
+                                      font=("Arial", 12), width=20)
+        self.start_date_entry.grid(row=0, column=0, sticky='ew')
 
-    """
-    Text Analysis Portion
-    """
-    print("Fetching Reddit posts...")
-    reddit_api = RedditAPI(subreddit, [ticker[0]], start_datetime, end_datetime)
-    reddit_df = reddit_api.search_subreddit()
+        Button(self.date_frame, text="📅", command=self.show_calendar,
+               font=("Arial", 12), width=3).grid(row=0, column=1, padx=(5, 0))
 
-    if reddit_df.empty:
-        print("No posts found for the selected criteria.")
-        return
+        # Subreddit Entry
+        Label(self.frame, text="Subreddit to analyze:", font=("Arial Bold", 18),
+              bg='blue', fg='white').grid(row=3, column=0, sticky='w', pady=5)
 
-    # Perform topic modeling
-    print("Performing topic modeling...")
-    topic_model = RedditTopicModel(reddit_df)
-    topic_model.initialize_model()
-    topic_model.fit_transform()
-    topic_model.process_topics()
-    topic_df = topic_model.get_topic_dataframe()
+        self.subreddit_var = StringVar(value='r/')
+        self.subreddit_entry = Entry(self.frame, textvariable=self.subreddit_var,
+                                     font=("Arial", 12))
+        self.subreddit_entry.grid(row=3, column=1, columnspan=2, sticky='ew', pady=5, padx=5)
+        self.subreddit_var.trace_add('write', self.enforce_r_prefix)
 
-    # Perform sentiment analysis
-    print("Performing sentiment analysis...")
-    sentiment_analysis = RedditSentimentAnalysis(topic_df)
-    sentiment_analysis.initialize_model()
-    sentiment_analysis.analyze_sentiment(batch_size=16)
-    sentiment_analysis.finalize_sentiment_dataframe()
-    ExportCSV(sentiment_analysis)
-    print("Analysis Completed.")
+        # Analyze Button
+        self.analyse_button = Button(self.frame, text="Analyse", font=("Arial Bold", 18),
+                                     state="disabled", bg='light grey', fg='dark grey',
+                                     command=self.analyse)
+        self.analyse_button.grid(row=4, column=0, columnspan=3, pady=20)
 
-    print(ticker, start_date, start_time, end_date, end_time, subreddit)
+        # Dropdown setup
+        self.setup_dropdown()
+        self.check_fields()
 
-# Create a frame for layout
-frame = tk.Frame(bg='blue')
+    def setup_dropdown(self):
+        self.dropdown_window = Toplevel(self.root)
+        self.dropdown_window.withdraw()
+        self.dropdown_window.overrideredirect(True)
 
-# Title label
-title_label = tk.Label(frame, text="SentiMEME-MLysis", font=("Arial Bold", 30), bg='blue', fg='white')
-title_label.grid(row=0, column=0, columnspan=2, pady=20)
+        self.dropdown_listbox = Listbox(self.dropdown_window, height=5, width=20, font=("Arial", 12))
+        self.scrollbar = Scrollbar(self.dropdown_window, orient=tk.VERTICAL, command=self.dropdown_listbox.yview)
+        self.dropdown_listbox.configure(yscrollcommand=self.scrollbar.set)
 
-# Ticker label and entry
-ticker_label = tk.Label(frame, text="Select Ticker:", font=("Arial Bold", 18), bg='blue', fg='white')
-ticker_label.grid(row=1, column=0)
+        self.dropdown_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-ticker_var = tk.StringVar()  # Default value
+        self.dropdown_listbox.bind("<ButtonRelease-1>", self.select_ticker)
+        self.dropdown_listbox.bind("<Return>", self.select_ticker)
 
-#Generates coin list for dropdown
-coinlist = CoinListGenerator().get_list()
-print("Coin List generated successfully!")
+    def show_calendar(self):
+        top = Toplevel(self.root)
+        top.title("Select Date")
+        cal = Calendar(top, selectmode='day',
+                       mindate=self.end_date - timedelta(days=365),
+                       maxdate=self.end_date,
+                       font=("Arial", 12),
+                       date_pattern='dd/mm/yyyy')  # Set date format here
+        cal.pack(padx=10, pady=10)
+        Button(top, text="OK", command=lambda: self.set_date(cal, top),
+               font=("Arial", 12)).pack(pady=5)
 
-# Create a Toplevel window for the dropdown list
-dropdown_window = tk.Toplevel(window)
-dropdown_window.withdraw()  # Hide the window initially
-dropdown_window.overrideredirect(True)  # Remove window decorations
+    def set_date(self, cal, top):
+        selected_date = cal.get_date()
+        self.start_date_var.set(selected_date)
+        top.destroy()
+        self.check_fields()
 
-# Create a Listbox with a Scrollbar
-dropdown_listbox = tk.Listbox(dropdown_window, height=5, width=20)  # Set a fixed width
-scrollbar = tk.Scrollbar(dropdown_window, orient=tk.VERTICAL, command=dropdown_listbox.yview)
-dropdown_listbox.configure(yscrollcommand=scrollbar.set)
+    def check_fields(self):
+        ticker = self.ticker_var.get().strip()
+        subreddit = self.subreddit_var.get().strip()
+        start_date = self.start_date_var.get()
 
-# Pack the Listbox and Scrollbar
-dropdown_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        if (ticker and ticker != "Search for a ticker" and
+                subreddit.startswith("r/") and len(subreddit) > 2 and
+                start_date):
+            self.analyse_button.config(state="normal", bg='white', fg='green')
+        else:
+            self.analyse_button.config(state="disabled", bg='light grey', fg='dark grey')
 
-def update_dropdown(event=None):
-    """Filters the dropdown list options as the user types."""
-    prefix = ticker_var.get()
-    dropdown_listbox.delete(0, tk.END)  # Clear the current list
+        self.root.after(300, self.check_fields)
 
-    if prefix == "":
-        for coin in coinlist:
-            dropdown_listbox.insert(tk.END, coin)  # Show all options if empty
-    else:
-        filtered_tickers = [coin for coin in coinlist if prefix in coin]
+    def analyse(self):
+        try:
+            ticker = self.ticker_var.get().split(' ')[0]
+            start_date = datetime.strptime(self.start_date_var.get(), "%d/%m/%Y").date()
+            subreddit = self.subreddit_var.get()[2:]
+
+            start_datetime = datetime.combine(start_date,
+                                              time(0, 0, 0) if (start_date == self.end_date or start_date-self.end_date> timedelta(days = 90)) else datetime.now().time())
+            end_datetime = datetime.combine(self.end_date, datetime.now().time())
+
+            number_analysis = NumericSubsystem(start_datetime, end_datetime, ticker, "market data")
+            number_analysis.extract_data()
+            ExportCSV(number_analysis)
+
+            reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
+            reddit_df = reddit_api.search_subreddit()
+            if reddit_df.empty:
+                return
+
+            topic_model = RedditTopicModel(reddit_df)
+            topic_model.initialize_model()
+            topic_model.fit_transform()
+            topic_model.process_topics()
+            topic_df = topic_model.get_topic_dataframe()
+
+            sentiment_analysis = RedditSentimentAnalysis(topic_df)
+            sentiment_analysis.initialize_model()
+            sentiment_analysis.analyze_sentiment(batch_size=16)
+            sentiment_analysis.finalize_sentiment_dataframe()
+            ExportCSV(sentiment_analysis)
+
+        except ValueError as e:
+            print(f"Error parsing date: {e}")
+
+    def update_dropdown(self, event=None):
+        self.dropdown_listbox.delete(0, tk.END)
+        prefix = self.ticker_var.get().lower()
+        filtered_tickers = [coin for coin in self.coinlist if prefix in coin.lower()]
         for coin in filtered_tickers:
-            dropdown_listbox.insert(tk.END, coin)  # Update dropdown list
+            self.dropdown_listbox.insert(tk.END, coin)
+        if self.dropdown_listbox.size() > 0:
+            x = self.ticker_entry.winfo_rootx()
+            y = self.ticker_entry.winfo_rooty() + self.ticker_entry.winfo_height()
+            self.dropdown_window.geometry(f"+{x}+{y}")
+            self.dropdown_window.deiconify()
 
-    # Adjust the width of the Listbox to fit the longest item
-    max_width = max(len(coin) for coin in dropdown_listbox.get(0, tk.END))
-    dropdown_listbox.configure(width=max_width + 2)  # Add some padding
+    def hide_dropdown(self, event=None):
+        if event and hasattr(event, 'widget'):
+            if event.widget == self.ticker_entry:
+                self.root.after(100, lambda: self.dropdown_window.withdraw())
+        else:
+            self.root.after(100, lambda: self.dropdown_window.withdraw())
 
-    # Position the dropdown window below the entry widget
-    if ticker_entry.winfo_ismapped():  # Check if the entry widget is visible
-        x = ticker_entry.winfo_rootx()
-        y = ticker_entry.winfo_rooty() + ticker_entry.winfo_height()
-        dropdown_window.geometry(f"+{x}+{y}")
-        dropdown_window.deiconify()  # Show the dropdown window
+    def select_ticker(self, event=None):
+        """Set the selected ticker in the entry field."""
+        selected_index = self.dropdown_listbox.curselection()
+        if selected_index:
+            selected_ticker = self.dropdown_listbox.get(selected_index[0])
+            self.ticker_var.set(selected_ticker)
+        self.hide_dropdown()
 
-def hide_dropdown(event=None):
-    """Hide the dropdown list when focus is lost."""
-    # Check if the mouse is over the dropdown window or its children
-    if not dropdown_window.winfo_containing(dropdown_window.winfo_pointerx(), dropdown_window.winfo_pointery()):
-        dropdown_window.withdraw()
+    def on_click(self, event):
+        if self.ticker_var.get() == "Search for a ticker":
+            self.ticker_var.set("")
 
-def select_ticker(event=None):
-    """Set the selected ticker in the entry field."""
-    selected = dropdown_listbox.get(tk.ACTIVE)
-    if selected:
-        ticker_var.set(selected)
-    hide_dropdown()
+    def enforce_r_prefix(self, *args):
+        current = self.subreddit_var.get()
+        if not current.startswith('r/'):
+            self.subreddit_var.set('r/' + current.lstrip('r/'))
 
-def on_click(event):
-    """Remove placeholder text when the user clicks inside the entry box."""
-    if ticker_var.get() == "Search for a ticker":
-        ticker_var.set("")
 
-#def on_focus_out(event):
-#    """Restore placeholder text if the entry is left empty."""
-#    if ticker_var.get().strip() == "":
-#        ticker_var.set("Search for a ticker")
-
-# Create an Entry widget for typing
-ticker_entry = tk.Entry(frame, textvariable=ticker_var)
-ticker_entry.grid(row=1, column=1, columnspan=3, pady=10)
-ticker_entry.insert(0, "Search for a ticker")  # Default value
-
-# Bind placeholder logic
-ticker_entry.bind("<FocusIn>", on_click)
-#ticker_entry.bind("<FocusOut>", on_focus_out)
-
-# Bind the update_dropdown function to the search input
-ticker_entry.bind("<KeyRelease>", update_dropdown)
-ticker_entry.bind("<FocusOut>", hide_dropdown)  # Hide dropdown when focus is lost
-
-# Bind the dropdown listbox to select a ticker
-dropdown_listbox.bind("<ButtonRelease-1>", select_ticker)
-dropdown_listbox.bind("<Return>", select_ticker)  # Allow selection with Enter key
-
-# Prevent the dropdown from closing when interacting with the scrollbar
-scrollbar.bind("<ButtonPress-1>", lambda event: "break")
-scrollbar.bind("<ButtonRelease-1>", lambda event: "break")
-
-# Date range label
-range_label = tk.Label(frame, text= "Enter analysis start date:", font=("Arial Bold", 18), bg='blue', fg='white')
-range_label.grid(row=2, column=0)
-
-# Date for end of range
-end_label = tk.Label(frame, text=f"End Date: {datetime.now().date()}", bg='blue', fg='white')
-
-# Date picker for start of range
-from datetime import timedelta
-
-today = datetime.now().date()
-one_year_ago = today - timedelta(days=365)
-
-start_date_label = DateEntry(
-    frame,
-    date_pattern='yyyy-mm-dd',
-    mindate=one_year_ago,
-    maxdate=today
-)
-start_date_label.grid(row=2, column=1, padx=5, pady=5)
-
-# Time for start and end of range
-start_time_label = tk.Label(frame, text=f"Start Time: {end_time}", bg='blue', fg='white')
-
-# Subreddit label and entry
-subreddit_label = tk.Label(frame, text= "Enter desired subreddit:", font=("Arial Bold", 18), bg='blue', fg='white')
-subreddit_label.grid(row=3, column=0)
-
-# Subreddit input with default 'r/' prefix
-subreddit_var = tk.StringVar(value='r/')  # Default value
-subreddit_entry = tk.Entry(frame,textvariable=subreddit_var)
-subreddit_entry.grid(row=3, column=1, columnspan=3, pady=10)
-
-# Prevent editing or typing before 'r/'
-def enforce_r_prefix(*args):
-    if not subreddit_var.get().startswith('r/'):
-        subreddit_var.set('r/' + subreddit_var.get().lstrip('r/'))
-
-subreddit_var.trace_add('write', enforce_r_prefix)
-
-# Prevent cursor from moving left of 'r/'
-def restrict_cursor(event):
-    # Get the current cursor position
-    cursor_index = subreddit_entry.index(tk.INSERT)
-    # Prevent cursor from moving before the 3rd character (after 'r/')
-    if cursor_index < 2:
-        subreddit_entry.icursor(2)
-
-# Prevent typing before 'r/'
-def prevent_insertion(event):
-    # Prevent text insertion before 'r/'
-    cursor_index = subreddit_entry.index(tk.INSERT)
-    if cursor_index < 2:
-        return "break"
-
-# Prevent backspace from deleting 'r/'
-def prevent_backspace(event):
-    # Prevent backspace if cursor is at or before 'r/'
-    cursor_index = subreddit_entry.index(tk.INSERT)
-    if cursor_index <= 2:
-        return "break"
-
-# Bind events to the subreddit entry
-subreddit_entry.bind("<KeyRelease>", restrict_cursor)     # Prevent cursor movement left of 'r/'
-subreddit_entry.bind("<Key>", prevent_insertion)          # Prevent insertion before 'r/'
-subreddit_entry.bind("<BackSpace>", prevent_backspace)    # Prevent backspace from deleting 'r/'
-
-# Button to run analysis
-analyse_button = tk.Button(frame, text="Analyse", font=("Arial Bold", 18), state="disabled", bg='light grey', fg='dark grey', command=analyse)
-analyse_button.grid(row=4, column=0, columnspan=2, pady=20)
-
-# Pack the frame
-frame.pack()
-
-check_fields()
-
-# Run the application
-window.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = SentiMemeApp(root)
+    root.mainloop()

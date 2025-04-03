@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import datetime
 from tzlocal import get_localzone
-import math
 from scripts.coingecko_api_fetch import CoingeckoFetchAPI
+import logging
 
 """
 NumericSubsystem should only be called to extract
@@ -51,11 +51,12 @@ class NumericSubsystem:
         numeric_df = self.numeric_data_df
         numeric_df.pipe(self.extract_date_time)
         self.numeric_data_df = numeric_df
-        print(self.numeric_data_df)
 
     # Call CoingeckoAPI
     def extract_data(self):
         try:
             self.response = CoingeckoFetchAPI(self.start, self.end, self.coin_name, self.purpose).retrieve_response()
-        except:
-            raise ValueError("Coingecko Input Error")
+
+        except Exception as e:
+            logging.error(f"Coingecko Input Error: {e}")
+            raise RuntimeError("Coingecko Input Error.") from e

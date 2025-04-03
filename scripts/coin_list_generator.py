@@ -2,13 +2,6 @@ from scripts.coingecko_api_fetch import CoingeckoFetchAPI
 import logging
 import requests  # To check for connectivity issues
 
-# Setup logging
-logging.basicConfig(
-    filename="app.log",
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-
 class CoinListGenerator:
     def __init__(self):
         self.coin_masterlist = []  # Ensure this exists even if an error occurs

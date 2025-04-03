@@ -7,13 +7,6 @@ from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 import prawcore
 
-# Setup logging
-logging.basicConfig(
-    filename="app.log",
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-)
-
 class RedditAPI:
     def __init__(self, subreddit: str, coin_ticker: list, start_datetime: datetime, end_datetime: datetime):
         self.subreddit_name = subreddit
@@ -111,5 +104,4 @@ class RedditAPI:
         if df.empty:
             logging.error("No reddit posts matched the given criteria.")
             raise RuntimeError("No reddit posts matched the given criteria.")
-
         return df

@@ -1,6 +1,7 @@
 import requests
 import os
 from dotenv import load_dotenv
+import logging
 
 class CoingeckoFetchAPI:
     load_dotenv()
@@ -13,7 +14,7 @@ class CoingeckoFetchAPI:
 
     def retrieve_response(self):
         if self.response.status_code==200:
-            print("Coingecko API fetch successful!")
+            logging.info("Coingecko API fetch successful!")
             return self.response
         else:
             raise ValueError(f"Coingecko API Error: {self.response}")

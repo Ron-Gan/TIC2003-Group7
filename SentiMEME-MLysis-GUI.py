@@ -1,6 +1,8 @@
 import tkinter as tk
-from tkinter import Toplevel, StringVar, Listbox, Scrollbar, Entry, Label, Button
-from tkcalendar import Calendar, DateEntry
+import logging
+import sys
+from tkinter import Toplevel, StringVar, Listbox, Scrollbar, Entry, Label, Button, messagebox
+from tkcalendar import Calendar
 from datetime import datetime, time, timedelta
 from scripts.coin_list_generator import CoinListGenerator
 from scripts.export_csv import ExportCSV
@@ -9,6 +11,14 @@ from scripts.reddit_api_fetch import RedditAPI
 from scripts.topic_model import RedditTopicModel
 from scripts.sentiment_analysis import RedditSentimentAnalysis
 
+with open("app.log", "w") as log_file:
+    log_file.write("")  # Clears the log file
+
+logging.basicConfig(
+    filename="app.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 class SentiMemeApp:
     def __init__(self, root):
@@ -40,7 +50,11 @@ class SentiMemeApp:
               bg='blue', fg='white').grid(row=1, column=0, sticky='w', pady=5)
 
         self.ticker_var = StringVar(value="Search for a ticker")
-        self.coinlist = CoinListGenerator().get_list()
+        try:
+            self.coinlist = CoinListGenerator().get_list()
+        except RuntimeError as e:
+            messagebox.showerror("Unexpected Error", str(e))
+            self.root.destroy()
 
         self.ticker_entry = Entry(self.frame, textvariable=self.ticker_var, font=("Arial", 12))
         self.ticker_entry.grid(row=1, column=1, columnspan=2, sticky='ew', pady=5, padx=5)
@@ -162,7 +176,14 @@ class SentiMemeApp:
             ExportCSV(sentiment_analysis)
 
         except ValueError as e:
-            print(f"Error parsing date: {e}")
+            error_msg = f"Error parsing date: {e}"
+            logging.error(error_msg)  # Log error
+            messagebox.showerror("Date Error", error_msg)  # Show popup
+
+        except Exception as e:
+            error_msg = f"Unexpected error: {e}"
+            logging.error(error_msg)  # Log error
+            messagebox.showerror("Unexpected Error", error_msg)  # Show popup
 
     def update_dropdown(self, event=None):
         self.dropdown_listbox.delete(0, tk.END)

@@ -58,4 +58,4 @@ class NumericSubsystem:
         try:
             self.response = CoingeckoFetchAPI(self.start, self.end, self.coin_name, self.purpose).retrieve_response()
         except:
-            raise ValueError("Input Error")
+            raise ValueError("Coingecko Input Error")

@@ -2,6 +2,7 @@
 .env
 Number_exported_data.csv
 Text_exported_data.csv
+app.log
 
 # Ignore compiled Python files
 __pycache__/

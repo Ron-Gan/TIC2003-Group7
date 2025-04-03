@@ -3,6 +3,7 @@ from bertopic import BERTopic
 from umap import UMAP
 from hdbscan import HDBSCAN
 from sentence_transformers import SentenceTransformer
+import logging
 
 
 class RedditTopicModel:
@@ -37,19 +38,22 @@ class RedditTopicModel:
 
     def fit_transform(self):
         if self.topic_model is None:
-            raise ValueError("Topic model is not initialized. Call initialize_model() first.")
+            logging.error("Topic model is not initialized. Call initialize_model() first")
+            raise ValueError("Topic model is not initialized.")
 
         if self.df.empty:
+            logging.error("Dataframe is empty for topic modelling.")
             raise ValueError("Dataframe is empty. Ensure you have Reddit posts.")
 
-        print(f"\n🔹 Running BERTopic on {len(self.df)} Reddit post comments...")
+        logging.info(f"\nRunning BERTopic on {len(self.df)} Reddit post comments...")
 
         comment_texts = self.df["comments"].apply(lambda x: " ".join(x) if isinstance(x, list) else str(x))
         self.topics, self.probs = self.topic_model.fit_transform(comment_texts)
 
     def process_topics(self, top_n=5):
         if self.topics is None:
-            raise ValueError("Topics have not been generated. Call fit_transform() first.")
+            logging.error("Topics have not been generated. Call fit_transform() first.")
+            raise ValueError("Topic modelling error. Please try again")
 
         self.topic_df = self.df.copy()
         self.topic_df["topic"] = self.topics
@@ -59,26 +63,25 @@ class RedditTopicModel:
         ]]
 
         self.filtered_topic_df = self.topic_df[self.topic_df['topic'] != -1].reset_index(drop=True)
-        print(f"\n✅ Filtered dataset size: {len(self.filtered_topic_df)} (Outliers removed)")
+        logging.info(f"\n Filtered dataset size: {len(self.filtered_topic_df)} (Outliers removed)")
 
         if self.topic_model is None:
-            raise ValueError("BERTopic model not initialized. Cannot summarize topics.")
+            logging.error("BERTopic model not initialized. Cannot summarize topics.")
+            raise ValueError("BERTopic model not initialized. Please try again.")
 
         topic_info = self.topic_model.get_topic_info()
-        print("\n✅ Top Words per Topic:")
-        print(topic_info.head(top_n))
 
     def get_topic_dataframe(self):
         if self.filtered_topic_df is None:
-            raise ValueError("Filtered topic DataFrame has not been created. Call process_topics() first.")
+            logging.error("Filtered topic DataFrame has not been created. Call process_topics() first.")
+            raise ValueError("Topic modelling error. Please try again.")
         return self.filtered_topic_df
 
     def save_model(self, save_path="bertopic_model"):
         if self.topic_model is None:
-            raise ValueError("Topic model is not initialized. Call initialize_model() first.")
+            logging.error("Topic model is not initialized. Call initialize_model() first.")
+            raise ValueError("Topic modelling error. Please try again.")
         self.topic_model.save(save_path)
-        print(f"Model saved to {save_path}")
 
     def load_model(self, load_path="bertopic_model"):
         self.topic_model = BERTopic.load(load_path)
-        print(f"Model loaded from {load_path}")

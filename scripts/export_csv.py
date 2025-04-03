@@ -1,6 +1,7 @@
 import pandas as pd
 from scripts.Numeric_Analysis_Subsystem import NumericSubsystem
 from scripts.sentiment_analysis import RedditSentimentAnalysis
+import logging
 
 """
     Takes in an input, checks which class it belongs to,
@@ -12,6 +13,7 @@ class ExportCSV:
         self.input = input
 
         if not isinstance(self.input, (RedditSentimentAnalysis, NumericSubsystem)):
+            logging.error("Internal conversion error; ExportCSV")
             raise ValueError(f"{self.input} is an invalid type to export CSV.")
         if type(self.input)==NumericSubsystem:
             self.input.convert_df()
@@ -23,4 +25,3 @@ class ExportCSV:
 
         filename = f"{self.type_result}_exported_data.csv"
         self.df.to_csv(filename, index=False)
-        print("Generated: ",filename)

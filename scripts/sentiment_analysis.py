@@ -79,8 +79,6 @@ class RedditSentimentAnalysis:
             "comments", "topic", "sentiment", "p_neg", "p_neut", "p_pos"
         ]].copy()
 
-        print(self.sentiment_df)
-
     def get_sentiment_dataframe(self):
         """
         Returns the finalized DataFrame with sentiment labels and probability scores.

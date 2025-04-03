@@ -156,6 +156,7 @@ class SentiMemeApp:
 
             number_analysis = NumericSubsystem(start_datetime, end_datetime, ticker, "market data")
             number_analysis.extract_data()
+            logging.info("Numeric Analysis Completed!")
             ExportCSV(number_analysis)
 
             reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
@@ -174,6 +175,7 @@ class SentiMemeApp:
             sentiment_analysis.analyze_sentiment(batch_size=16)
             sentiment_analysis.finalize_sentiment_dataframe()
             ExportCSV(sentiment_analysis)
+            logging.info("Text Analysis Completed!")
 
         except ValueError as e:
             error_msg = f"Error parsing date: {e}"

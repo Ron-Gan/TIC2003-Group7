@@ -2,19 +2,22 @@ import os
 import praw
 import pandas as pd
 import time
-from datetime import datetime, timezone, timedelta, date, time
+import logging
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 import prawcore
-from praw.models import MoreComments
-import prawcore.exceptions  
+
+# Setup logging
+logging.basicConfig(
+    filename="app.log",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 class RedditAPI:
-    def __init__(self, subreddit: str, coin_tinker: list, start_datetime: datetime, end_datetime: datetime):
-        """
-        Initialize the RedditAPI class with subreddit, coin keywords, and datetime range.
-        """
+    def __init__(self, subreddit: str, coin_ticker: list, start_datetime: datetime, end_datetime: datetime):
         self.subreddit_name = subreddit
-        self.coin_ticker = coin_tinker
+        self.coin_ticker = coin_ticker
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
         self.reddit = self.create_reddit_instance()
@@ -22,93 +25,91 @@ class RedditAPI:
 
     def create_reddit_instance(self):
         """Creates and authenticates a Reddit instance using environment variables."""
-        load_dotenv()  # Load credentials from .env file
-
-        reddit = praw.Reddit(
-            client_id=os.getenv('CLIENT_ID'),
-            client_secret=os.getenv('CLIENT_SECRET'),
-            user_agent=os.getenv('USER_AGENT'),
-            username=os.getenv('USERN'),
-            password=os.getenv('PASSWORD')
-        )
-        return reddit
+        load_dotenv()
+        try:
+            reddit = praw.Reddit(
+                client_id=os.getenv('CLIENT_ID'),
+                client_secret=os.getenv('CLIENT_SECRET'),
+                user_agent=os.getenv('USER_AGENT'),
+                username=os.getenv('USERN'),
+                password=os.getenv('PASSWORD')
+            )
+            logging.info("Reddit API authenticated successfully.")
+            return reddit
+        except Exception as e:
+            logging.error(f"Failed to authenticate Reddit API: {e}")
+            raise RuntimeError("Failed to authenticate Reddit API.") from e
 
     def search_subreddit(self):
-        """
-        Retrieve posts from the subreddit within the specified start_datetime and end_datetime range.
-        Extracts relevant post data and top-level comments (up to 5 per post).
-        """
+        """Retrieve posts from the subreddit and filter them based on keywords and time range."""
         search_results = []
         start_timestamp = self.start_datetime.timestamp()
         end_timestamp = self.end_datetime.timestamp()
 
         if not self.coin_ticker or all(not keyword.strip() for keyword in self.coin_ticker):
-            print("Error: No valid keywords provided.")
-            return pd.DataFrame()
+            logging.error("No valid keywords provided.")
+            raise ValueError("No valid keywords provided.")
 
         for keyword in self.coin_ticker:
-            posts = []  # Initialize posts to avoid undefined variable error
+            posts = []
 
             try:
-                # Ensure keyword is valid
                 if not isinstance(keyword, str) or len(keyword.strip()) == 0:
-                    print(f"Skipping invalid keyword: {keyword}")
+                    logging.warning(f"Skipping invalid keyword: {keyword}")
                     continue
 
-                print(f"Fetching latest posts in r/{self.subreddit_name} and filtering by keyword: {keyword}")
+                logging.info(f"Fetching latest posts in r/{self.subreddit_name} for keyword: {keyword}")
 
-                # Fetch latest posts instead of using `.search()`
                 retry_attempts = 3
                 for attempt in range(retry_attempts):
                     try:
-                        posts = list(self.subreddit.new(limit=1000))  # Fetch latest posts
-                        # print(f"Found {len(posts)} posts in r/{self.subreddit_name}")
+                        posts = list(self.subreddit.new(limit=1000))
                         if not posts:
-                            print(f"No results for '{keyword}' in r/{self.subreddit_name}.")
-                        break  # Exit retry loop if successful
+                            logging.warning(f"No results for '{keyword}' in r/{self.subreddit_name}.")
+                        break
                     except prawcore.exceptions.BadRequest:
-                        print(f"Bad request error for subreddit '{self.subreddit_name}'. Skipping.")
-                        posts = []
-                        break
+                        logging.error(f"Bad request error for subreddit '{self.subreddit_name}'.")
+                        raise RuntimeError(f"Bad request error for subreddit '{self.subreddit_name}'.")  # ✅ Raise
                     except prawcore.exceptions.RequestException as e:
-                        print(f"API request failed (Attempt {attempt+1}/{retry_attempts}): {e}")
-                        time.sleep(10)  # Wait before retrying
+                        logging.error(f"API request failed (Attempt {attempt+1}/{retry_attempts}): {e}")
+                        time.sleep(10)
                     except prawcore.exceptions.TooManyRequests as e:
-                        print(f"Rate limit exceeded. Waiting before retrying: {e}")
-                        time.sleep(30)  # Wait longer if rate-limited
+                        logging.error(f"Rate limit exceeded. Waiting: {e}")
+                        time.sleep(30)
                     except Exception as e:
-                        print(f"Unexpected error: {e}")
-                        posts = []
-                        break
+                        logging.error(f"Unexpected error: {e}")
+                        raise RuntimeError(f"Please try another subreddit")
 
                 for post in posts:
-                    post_timestamp = post.created_utc  
+                    post_timestamp = post.created_utc
 
-                    # Filter posts based on time range and keyword presence
                     if start_timestamp <= post_timestamp <= end_timestamp and keyword.lower() in post.title.lower():
-                        # Extract comments
                         try:
-                            post.comments.replace_more(limit=0)  # Remove MoreComments
-                            top_comments = [comment.body for comment in post.comments[:5]]  # Top 5 comments
+                            post.comments.replace_more(limit=0)
+                            top_comments = [comment.body for comment in post.comments[:5]]
                         except Exception as e:
-                            print(f"Failed to fetch comments for post {post.id}: {e}")
-                            top_comments = []
+                            logging.error(f"Failed to fetch comments for post {post.id}: {e}")
+                            raise RuntimeError(f"Failed to fetch comments for post {post.id}: {e}")
 
                         search_results.append({
                             'id': post.id,
                             'title': post.title,
-                            'selftext': getattr(post, 'selftext', ''),  # Handle missing text
+                            'selftext': getattr(post, 'selftext', ''),
                             'created': datetime.fromtimestamp(post_timestamp, tz=timezone.utc).astimezone(timezone(timedelta(hours=8))),
                             'upvote_ratio': getattr(post, 'upvote_ratio', 0),
                             'ups': getattr(post, 'ups', 0),
                             'downs': getattr(post, 'downs', 0),
                             'score': getattr(post, 'score', 0),
-                            'comments': top_comments  # Store list of comments
+                            'comments': top_comments
                         })
 
             except Exception as e:
-                print(f"Error searching subreddit for keyword '{keyword}': {e}")
+                logging.error(f"Error searching subreddit for keyword '{keyword}': {e}")
+                raise
 
-        return pd.DataFrame(search_results) if search_results else pd.DataFrame(columns=[
-            'id', 'title', 'selftext', 'created', 'upvote_ratio', 'ups', 'downs', 'score', 'comments'
-        ])
+        df = pd.DataFrame(search_results)
+        if df.empty:
+            logging.error("No reddit posts matched the given criteria.")
+            raise RuntimeError("No reddit posts matched the given criteria.")
+
+        return df

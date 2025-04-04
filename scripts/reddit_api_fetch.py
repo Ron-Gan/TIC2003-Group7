@@ -11,8 +11,8 @@ class RedditAPI:
     def __init__(self, subreddit: str, coin_ticker: list, start_datetime: datetime, end_datetime: datetime):
         self.subreddit_name = subreddit
         self.coin_ticker = coin_ticker
-        self.start_datetime = start_datetime
-        self.end_datetime = end_datetime
+        self.start_datetime = datetime.timestamp(start_datetime)
+        self.end_datetime = datetime.timestamp(end_datetime)
         self.reddit = self.create_reddit_instance()
         self.subreddit = self.reddit.subreddit(self.subreddit_name)
 
@@ -36,8 +36,8 @@ class RedditAPI:
     def search_subreddit(self):
         """Retrieve posts from the subreddit and filter them based on keywords and time range."""
         search_results = []
-        start_timestamp = self.start_datetime.timestamp()
-        end_timestamp = self.end_datetime.timestamp()
+        start_timestamp = self.start_datetime
+        end_timestamp = self.end_datetime
 
         if not self.coin_ticker or all(not keyword.strip() for keyword in self.coin_ticker):
             logging.error("No valid keywords provided.")

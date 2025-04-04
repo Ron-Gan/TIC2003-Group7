@@ -151,7 +151,7 @@ class SentiMemeApp:
             subreddit = self.subreddit_var.get()[2:]
 
             start_datetime = datetime.combine(start_date,
-                                              time(0, 0, 0) if (start_date == self.end_date or start_date-self.end_date> timedelta(days = 90)) else datetime.now().time())
+                                            time(0, 0, 0) if (start_date == self.end_date or start_date - self.end_date > timedelta(days=90)) else datetime.now().time())
             end_datetime = datetime.combine(self.end_date, datetime.now().time())
 
             number_analysis = NumericSubsystem(start_datetime, end_datetime, ticker, "market data")
@@ -164,11 +164,19 @@ class SentiMemeApp:
             if reddit_df.empty:
                 return
 
-            topic_model = RedditTopicModel(reddit_df)
-            topic_model.initialize_model()
-            topic_model.fit_transform()
-            topic_model.process_topics()
-            topic_df = topic_model.get_topic_dataframe()
+            # Start with topic modelling
+            try:
+                topic_model = RedditTopicModel(reddit_df)
+                topic_model.initialize_model()
+                topic_model.fit_transform()
+                topic_model.process_topics()
+                topic_df = topic_model.get_topic_dataframe()
+                logging.info("Topic Modelling Completed!")
+            except Exception as topic_error:
+                logging.error(f"Topic modelling failed: {topic_error}")
+                messagebox.showwarning("Topic Modelling Failed", "Proceeding with sentiment analysis only.")
+                topic_df = reddit_df.copy()
+                topic_df["topic"] = -1  # Assign -1 to indicate no topic model
 
             sentiment_analysis = RedditSentimentAnalysis(topic_df)
             sentiment_analysis.initialize_model()
@@ -179,14 +187,15 @@ class SentiMemeApp:
 
         except ValueError as e:
             error_msg = f"Error parsing date: {e}"
-            logging.error(error_msg)  # Log error
-            messagebox.showerror("Date Error", error_msg)  # Show popup
+            logging.error(error_msg)
+            messagebox.showerror("Date Error", error_msg)
 
         except Exception as e:
             error_msg = f"Unexpected error: {e}"
-            logging.error(error_msg)  # Log error
-            messagebox.showerror("Unexpected Error", error_msg)  # Show popup
+            logging.error(error_msg)
+            messagebox.showerror("Unexpected Error", error_msg)
 
+        
     def update_dropdown(self, event=None):
         self.dropdown_listbox.delete(0, tk.END)
         prefix = self.ticker_var.get().lower()

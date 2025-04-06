@@ -30,6 +30,8 @@ class SentiMemeApp:
         self.end_date = datetime.now().date()
         self.end_time = datetime.now().time().strftime("%H:%M:%S")
 
+        self.calendar_window = None
+
         self.setup_ui()
 
     def setup_ui(self):
@@ -118,15 +120,24 @@ class SentiMemeApp:
         self.dropdown_listbox.bind("<Return>", self.select_ticker)
 
     def show_calendar(self):
-        top = Toplevel(self.root)
-        top.title("Select Date")
-        cal = Calendar(top, selectmode='day',
-                       mindate=self.end_date - timedelta(days=365),
+        if self.calendar_window and self.calendar_window.winfo_exists():
+            self.calendar_window.lift()  # Bring it to front if it's already open
+            return
+
+        self.calendar_window = Toplevel(self.root)  # assign to self.calendar_window
+        self.calendar_window.title("Select Date")
+
+        cal = Calendar(self.calendar_window,
+                       selectmode='day',
+                       mindate=self.end_date - timedelta(days=15),
                        maxdate=self.end_date,
                        font=("Arial", 12),
                        date_pattern='dd/mm/yyyy')  # Set date format here
         cal.pack(padx=10, pady=10)
-        Button(top, text="OK", command=lambda: self.set_date(cal, top),
+        
+        Button(self.calendar_window, 
+               text="OK", 
+               command=lambda: self.set_date(cal, self.calendar_window),
                font=("Arial", 12)).pack(pady=5)
 
     def set_date(self, cal, top):

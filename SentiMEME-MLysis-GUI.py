@@ -87,6 +87,11 @@ class SentiMemeApp:
         self.subreddit_entry.grid(row=3, column=1, columnspan=2, sticky='ew', pady=5, padx=5)
         self.subreddit_var.trace_add('write', self.enforce_r_prefix)
 
+        self.subreddit_entry.bind("<KeyRelease>", self.restrict_cursor)
+        self.subreddit_entry.bind("<Key>", self.prevent_insertion)
+        self.subreddit_entry.bind("<BackSpace>", self.prevent_backspace)
+        self.subreddit_entry.bind("<ButtonRelease-1>", self.restrict_cursor)
+
         # Analyze Button
         self.analyse_button = Button(self.frame, text="Analyse", font=("Arial Bold", 18),
                                      state="disabled", bg='light grey', fg='dark grey',
@@ -194,7 +199,6 @@ class SentiMemeApp:
             error_msg = f"Unexpected error: {e}"
             logging.error(error_msg)
             messagebox.showerror("Unexpected Error", error_msg)
-
         
     def update_dropdown(self, event=None):
         self.dropdown_listbox.delete(0, tk.END)
@@ -232,6 +236,17 @@ class SentiMemeApp:
         if not current.startswith('r/'):
             self.subreddit_var.set('r/' + current.lstrip('r/'))
 
+    def restrict_cursor(self, event):
+        if self.subreddit_entry.index(tk.INSERT) < 2:
+            self.subreddit_entry.icursor(2)  # Force cursor after "r/"
+        
+    def prevent_backspace(self, event):
+        if self.subreddit_entry.index(tk.INSERT) <= 2:
+            return "break"
+    
+    def prevent_insertion(self, event):
+        if self.subreddit_entry.index(tk.INSERT) < 2:
+            return "break"
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -21,11 +21,11 @@ class RedditTopicModel:
         dataset_size = len(self.df)
 
         if dataset_size < 10:
-            print("\n🔹 Using small dataset optimization")
+            logging.info("Using small dataset optimisation for topic modelling")
             umap_model = UMAP(n_components=2, n_neighbors=2, min_dist=0.1, metric="cosine")
             hdbscan_model = HDBSCAN(min_cluster_size=2, min_samples=1)
         else:
-            print("\n🔹 Using large dataset optimization")
+            logging.info("Using large dataset optimisation for topic modelling")
             umap_model = UMAP(n_components=5, n_neighbors=15, min_dist=0.1, metric="cosine")
             hdbscan_model = HDBSCAN(min_cluster_size=5, min_samples=5)
 

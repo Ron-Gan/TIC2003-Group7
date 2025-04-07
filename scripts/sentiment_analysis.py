@@ -71,12 +71,12 @@ class RedditSentimentAnalysis:
         if "sentiment" not in self.df.columns or "p_neg" not in self.df.columns:
             raise ValueError("Sentiment analysis has not been run. Call analyze_sentiment() first.")
 
-        self.df["date"] = pd.to_datetime(self.df["created"]).dt.date.astype(str)
-        self.df["time"] = pd.to_datetime(self.df["created"]).dt.time.astype(str)
+        self.df["Date"] = pd.to_datetime(self.df["created"]).dt.date.astype(str)
+        self.df["Time"] = pd.to_datetime(self.df["created"]).dt.time.astype(str)
 
         self.sentiment_df = self.df[[
-            "id", "title", "created", "date", "time", "upvote_ratio", "ups", "downs", "score",
-            "comments", "topic", "sentiment", "p_neg", "p_neut", "p_pos"
+            "title", "created", "Date", "Time", "upvote_ratio",
+             "topic", "sentiment", "p_neg", "p_neut", "p_pos", "url"
         ]].copy()
 
     def get_sentiment_dataframe(self):

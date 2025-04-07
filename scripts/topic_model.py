@@ -59,7 +59,7 @@ class RedditTopicModel:
         self.topic_df["topic"] = self.topics
 
         self.topic_df = self.topic_df[[
-            "id", "title", "created", "upvote_ratio", "ups", "downs", "score", "comments", "topic"
+            "id", "title", "created", "upvote_ratio", "ups", "downs", "score", "comments", "topic", "url"
         ]]
 
         self.filtered_topic_df = self.topic_df[self.topic_df['topic'] != -1].reset_index(drop=True)

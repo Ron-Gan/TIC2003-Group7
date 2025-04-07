@@ -166,21 +166,26 @@ class SentiMemeApp:
             start_date = datetime.strptime(self.start_date_var.get(), "%d/%m/%Y").date()
             subreddit = self.subreddit_var.get()[2:]
 
-            start_datetime = datetime.combine(start_date,
-                                            time(0, 0, 0) if (start_date == self.end_date or start_date - self.end_date > timedelta(days=90)) else datetime.now().time())
+            start_datetime = datetime.combine(
+                start_date,
+                time(0, 0, 0) if (start_date == self.end_date or start_date - self.end_date > timedelta(days=90)) else datetime.now().time()
+            )
             end_datetime = datetime.combine(self.end_date, datetime.now().time())
 
+            # Numeric Analysis
             number_analysis = NumericSubsystem(start_datetime, end_datetime, ticker, "market data")
             number_analysis.extract_data()
+            number_analysis.convert_df()
+            numeric_df = number_analysis.get_numeric_data_df()
             logging.info("Numeric Analysis Completed!")
-            ExportCSV(number_analysis)
 
+            # Reddit Extraction
             reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
             reddit_df = reddit_api.search_subreddit()
             if reddit_df.empty:
                 return
 
-            # Start with topic modelling
+            # Topic Modelling
             try:
                 topic_model = RedditTopicModel(reddit_df)
                 topic_model.initialize_model()
@@ -190,16 +195,20 @@ class SentiMemeApp:
                 logging.info("Topic Modelling Completed!")
             except Exception as topic_error:
                 logging.error(f"Topic modelling failed: {topic_error}")
-                messagebox.showwarning("Topic Modelling Failed", "Proceeding with sentiment analysis only.")
+                messagebox.showwarning("Topic Modelling Failed due to insufficient post", "Proceeding with sentiment analysis only.")
                 topic_df = reddit_df.copy()
-                topic_df["topic"] = -1  # Assign -1 to indicate no topic model
+                topic_df["topic"] = -1
 
+            # Sentiment Analysis
             sentiment_analysis = RedditSentimentAnalysis(topic_df)
             sentiment_analysis.initialize_model()
             sentiment_analysis.analyze_sentiment(batch_size=16)
             sentiment_analysis.finalize_sentiment_dataframe()
-            ExportCSV(sentiment_analysis)
+            sentiment_df = sentiment_analysis.get_sentiment_dataframe()
             logging.info("Text Analysis Completed!")
+
+            # Merged Export
+            ExportCSV(df_text=sentiment_df, df_num=numeric_df)
             messagebox.showinfo("Analysis Completed","Analysis Completed Successfully!")
 
         except ValueError as e:
@@ -211,6 +220,7 @@ class SentiMemeApp:
             error_msg = f"Unexpected error: {e}"
             logging.error(error_msg)
             messagebox.showerror("Unexpected Error", error_msg)
+
         
     def update_dropdown(self, event=None):
         self.dropdown_listbox.delete(0, tk.END)

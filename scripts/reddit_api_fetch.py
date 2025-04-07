@@ -93,7 +93,8 @@ class RedditAPI:
                             'ups': getattr(post, 'ups', 0),
                             'downs': getattr(post, 'downs', 0),
                             'score': getattr(post, 'score', 0),
-                            'comments': top_comments
+                            'comments': top_comments,
+                            'url': f"https://www.reddit.com{post.permalink}"
                         })
 
             except Exception as e:

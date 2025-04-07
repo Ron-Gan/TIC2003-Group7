@@ -200,6 +200,7 @@ class SentiMemeApp:
             sentiment_analysis.finalize_sentiment_dataframe()
             ExportCSV(sentiment_analysis)
             logging.info("Text Analysis Completed!")
+            messagebox.showinfo("Analysis Completed","Analysis Completed Successfully!")
 
         except ValueError as e:
             error_msg = f"Error parsing date: {e}"

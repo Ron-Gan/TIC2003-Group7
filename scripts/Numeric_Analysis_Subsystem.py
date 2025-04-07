@@ -30,6 +30,7 @@ class NumericSubsystem:
         local_tz = get_localzone()  # Detect OS timezone
         df["Timestamp"] = pd.to_datetime(df["Timestamp"], unit="ms")  # Convert Unix timestamp
         df["Timestamp"] = df["Timestamp"].dt.tz_localize("UTC").dt.tz_convert(local_tz)
+        df.insert(0,'Coin Ticker',self.coin_name)
         self.numeric_data_df = df
 
     """

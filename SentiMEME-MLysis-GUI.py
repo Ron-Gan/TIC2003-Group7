@@ -4,21 +4,15 @@ import sys
 from tkinter import Toplevel, StringVar, Listbox, Scrollbar, Entry, Label, Button, messagebox
 from tkcalendar import Calendar
 from datetime import datetime, time, timedelta
-from scripts.coin_list_generator import CoinListGenerator
-from scripts.export_csv import ExportCSV
-from scripts.Numeric_Analysis_Subsystem import NumericSubsystem
-from scripts.reddit_api_fetch import RedditAPI
-from scripts.topic_model import RedditTopicModel
-from scripts.sentiment_analysis import RedditSentimentAnalysis
 from pathlib import Path
 import os
 import subprocess
 
-with open("app.log", "w") as log_file:
+with open("logfile.log", "w") as log_file:
     log_file.write("")  # Clears the log file
 
 logging.basicConfig(
-    filename="app.log",
+    filename="logfile.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
@@ -57,6 +51,7 @@ class SentiMemeApp:
 
         self.ticker_var = StringVar(value="Search for a ticker")
         try:
+            from scripts.coin_list_generator import CoinListGenerator
             self.coinlist = CoinListGenerator().get_list()
         except RuntimeError as e:
             messagebox.showerror("Unexpected Error", str(e))
@@ -187,13 +182,17 @@ class SentiMemeApp:
             end_datetime = datetime.combine(self.end_date, datetime.now().time())
 
             # Numeric Analysis
-            number_analysis = NumericSubsystem(start_datetime, end_datetime, ticker, "market data")
+            from scripts.Numeric_Analysis_Subsystem import NumericSubsystem
+
+            number_analysis = NumericSubsystem(start_datetime, end_datetime, ticker)
             number_analysis.extract_data()
             number_analysis.convert_df()
             numeric_df = number_analysis.get_numeric_data_df()
             logging.info("Numeric Analysis Completed!")
 
             # Reddit Extraction
+            from scripts.reddit_api_fetch import RedditAPI
+
             reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
             reddit_df = reddit_api.search_subreddit()
             if reddit_df.empty:
@@ -202,6 +201,8 @@ class SentiMemeApp:
 
             # Topic Modelling
             try:
+                from scripts.topic_model import RedditTopicModel
+
                 topic_model = RedditTopicModel(reddit_df)
                 topic_model.initialize_model()
                 topic_model.fit_transform()
@@ -215,6 +216,8 @@ class SentiMemeApp:
                 topic_df["topic"] = -1
 
             # Sentiment Analysis
+            from scripts.sentiment_analysis import RedditSentimentAnalysis
+
             sentiment_analysis = RedditSentimentAnalysis(topic_df)
             sentiment_analysis.initialize_model()
             sentiment_analysis.analyze_sentiment(batch_size=16)
@@ -223,6 +226,7 @@ class SentiMemeApp:
             logging.info("Text Analysis Completed!")
 
             # Merged Export
+            from scripts.export_csv import ExportCSV
             ExportCSV(df_text=sentiment_df, df_num=numeric_df)
             messagebox.showinfo("Analysis Completed","Analysis Completed Successfully!")
 
@@ -247,12 +251,12 @@ class SentiMemeApp:
         filename = "SentiMEME-MLysis-Dashboard_FINAL.twbx"
 
         # Go one level up from the current script's directory
-        parent_dir = Path(__file__).resolve().parent.parent
+        parent_dir = Path(__file__).resolve().parent
         twbx_file = parent_dir / filename
 
         # Check if file exists
         if not twbx_file.exists():
-            messagebox.showwarning("No File Found", f"'{filename}' not found one level up.")
+            messagebox.showwarning("No File Found", f"'{filename}' not found. Please ensure it is in the same folder as the .exe.")
             self.analyse_button.config(state="normal", bg='white', fg='green')
             self.status_label.config(text="")
             return

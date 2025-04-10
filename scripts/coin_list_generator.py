@@ -33,7 +33,7 @@ class CoinListGenerator:
 
     # Calls CoinGecko API for list of coins
     def extract_data(self):
-        self.response = CoingeckoFetchAPI(None, None, None, "coin list").retrieve_response()
+        self.response = CoingeckoFetchAPI.for_coin_list().retrieve_response()
 
     def get_list(self):
         return self.coin_masterlist

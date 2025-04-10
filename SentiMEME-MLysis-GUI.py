@@ -10,6 +10,9 @@ from scripts.Numeric_Analysis_Subsystem import NumericSubsystem
 from scripts.reddit_api_fetch import RedditAPI
 from scripts.topic_model import RedditTopicModel
 from scripts.sentiment_analysis import RedditSentimentAnalysis
+from pathlib import Path
+import os
+import subprocess
 
 with open("app.log", "w") as log_file:
     log_file.write("")  # Clears the log file
@@ -31,6 +34,7 @@ class SentiMemeApp:
         self.end_time = datetime.now().time().strftime("%H:%M:%S")
 
         self.calendar_window = None
+        self.status_label = None
 
         self.setup_ui()
 
@@ -71,7 +75,7 @@ class SentiMemeApp:
         self.date_frame = tk.Frame(self.frame, bg='blue')
         self.date_frame.grid(row=2, column=1, sticky='ew')
 
-        self.start_date_var = StringVar()
+        self.start_date_var = StringVar(value=(self.end_date - timedelta(days=15)).strftime('%d/%m/%Y'))
         self.start_date_entry = Entry(self.date_frame, textvariable=self.start_date_var,
                                       font=("Arial", 12), width=20)
         self.start_date_entry.grid(row=0, column=0, sticky='ew')
@@ -99,6 +103,10 @@ class SentiMemeApp:
                                      state="disabled", bg='light grey', fg='dark grey',
                                      command=self.analyse)
         self.analyse_button.grid(row=4, column=0, columnspan=3, pady=20)
+
+        # Status label
+        self.status_label = Label(self.frame, text="", bg='blue', fg='white', font=("Arial", 12))
+        self.status_label.grid(row=5, column=0, columnspan=3, pady=(0, 10))
 
         # Dropdown setup
         self.setup_dropdown()
@@ -161,6 +169,11 @@ class SentiMemeApp:
         self.root.after(300, self.check_fields)
 
     def analyse(self):
+        # Disable button during processing
+        self.analyse_button.config(state="disabled", bg='light grey', fg='dark grey')
+        self.status_label.config(text="Running analysis...")
+        self.root.update_idletasks()
+
         try:
             ticker = self.ticker_var.get().split(' ')[0]
             start_date = datetime.strptime(self.start_date_var.get(), "%d/%m/%Y").date()
@@ -170,6 +183,7 @@ class SentiMemeApp:
                 start_date,
                 time(0, 0, 0) if (start_date == self.end_date or start_date - self.end_date > timedelta(days=90)) else datetime.now().time()
             )
+
             end_datetime = datetime.combine(self.end_date, datetime.now().time())
 
             # Numeric Analysis
@@ -183,6 +197,7 @@ class SentiMemeApp:
             reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
             reddit_df = reddit_api.search_subreddit()
             if reddit_df.empty:
+                self.status_label.config(text="No Reddit posts found.")
                 return
 
             # Topic Modelling
@@ -211,17 +226,58 @@ class SentiMemeApp:
             ExportCSV(df_text=sentiment_df, df_num=numeric_df)
             messagebox.showinfo("Analysis Completed","Analysis Completed Successfully!")
 
+            self.find_and_open_twbx()
+
         except ValueError as e:
             error_msg = f"Error parsing date: {e}"
             logging.error(error_msg)
             messagebox.showerror("Date Error", error_msg)
+            self.analyse_button.config(state="normal", bg='white', fg='green')
+            self.status_label.config(text="")
 
         except Exception as e:
             error_msg = f"Unexpected error: {e}"
             logging.error(error_msg)
             messagebox.showerror("Unexpected Error", error_msg)
+            self.analyse_button.config(state="normal", bg='white', fg='green')
+            self.status_label.config(text="")
 
-        
+    def find_and_open_twbx(self):
+        # Define the target file name
+        filename = "SentiMEME-MLysis-Dashboard_FINAL.twbx"
+
+        # Go one level up from the current script's directory
+        parent_dir = Path(__file__).resolve().parent.parent
+        twbx_file = parent_dir / filename
+
+        # Check if file exists
+        if not twbx_file.exists():
+            messagebox.showwarning("No File Found", f"'{filename}' not found one level up.")
+            self.analyse_button.config(state="normal", bg='white', fg='green')
+            self.status_label.config(text="")
+            return
+
+        try:
+            self.status_label.config(text="Opening SentiMEME-MLysis-Dashboard_FINAL.twbx")
+            
+            # Open with default application            
+            if os.name == 'nt':  # Windows
+                os.startfile(twbx_file)
+            elif sys.platform == 'darwin':  # macOS
+                subprocess.run(["open", str(twbx_file)])
+            else:  # Linux/Unix
+                subprocess.run(["xdg-open", str(twbx_file)])
+
+            self.status_label.config(text="Done!")
+
+            logging.info(f"Opened .twbx file: {twbx_file}")
+
+        except Exception as e:
+            logging.error(f"Failed to open .twbx: {e}")
+            messagebox.showerror("Error", f"Failed to open the .twbx file:\n{e}")
+            self.analyse_button.config(state="normal", bg='white', fg='green')
+            self.status_label.config(text="")
+
     def update_dropdown(self, event=None):
         self.dropdown_listbox.delete(0, tk.END)
         prefix = self.ticker_var.get().lower()

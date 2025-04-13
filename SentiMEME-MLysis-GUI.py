@@ -169,6 +169,9 @@ class SentiMemeApp:
         self.status_label.config(text="Running analysis...")
         self.root.update_idletasks()
 
+        # Track if a non-fatal warning occurred
+        self.non_fatal_warning = False
+
         try:
             ticker = self.ticker_var.get().split(' ')[0]
             start_date = datetime.strptime(self.start_date_var.get(), "%d/%m/%Y").date()
@@ -189,31 +192,43 @@ class SentiMemeApp:
             number_analysis.convert_df()
             numeric_df = number_analysis.get_numeric_data_df()
             logging.info("Numeric Analysis Completed!")
+            self.status_label.config(text="Numeric Analysis Completed, proceeding with Reddit extraction...")
 
             # Reddit Extraction
             from scripts.reddit_api_fetch import RedditAPI
 
             reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
             reddit_df = reddit_api.search_subreddit()
+
             if reddit_df.empty:
-                self.status_label.config(text="No Reddit posts found.")
+                error_msg = "No Reddit posts found."
+                logging.error(error_msg)
+                messagebox.showerror("Analysis Error", error_msg)
+                self.analyse_button.config(state="normal", bg='white', fg='green')  # Re-enable on error
+                self.status_label.config(text="")
                 return
+            
+            self.status_label.config(text="Reddit Extraction Completed, proceeding with topic modelling...")
 
             # Topic Modelling
-            try:
-                from scripts.topic_model import RedditTopicModel
+            from scripts.topic_model import RedditTopicModel
 
+            try:
                 topic_model = RedditTopicModel(reddit_df)
                 topic_model.initialize_model()
                 topic_model.fit_transform()
                 topic_model.process_topics()
                 topic_df = topic_model.get_topic_dataframe()
                 logging.info("Topic Modelling Completed!")
+                self.status_label.config(text="Topic Modelling Completed, proceeding with sentiment analysis...")
+            
             except Exception as topic_error:
                 logging.error(f"Topic modelling failed: {topic_error}")
-                messagebox.showwarning("Topic Modelling Failed due to insufficient post", "Proceeding with sentiment analysis only.")
+                messagebox.showwarning("Topic Modelling Failed due to insufficient posts", "Insufficient posts to perform topic modelling, proceeding with sentiment analysis only.")
+                self.status_label.config(text="Topic Modelling Failed, proceeding with sentiment analysis...")
                 topic_df = reddit_df.copy()
                 topic_df["topic"] = -1
+                non_fatal_warning = True # Set flag for non-fatal warning
 
             # Sentiment Analysis
             from scripts.sentiment_analysis import RedditSentimentAnalysis
@@ -224,27 +239,34 @@ class SentiMemeApp:
             sentiment_analysis.finalize_sentiment_dataframe()
             sentiment_df = sentiment_analysis.get_sentiment_dataframe()
             logging.info("Text Analysis Completed!")
+            self.status_label.config(text="Text Analysis Completed, proceeding with export...")
 
             # Merged Export
             from scripts.export_csv import ExportCSV
             ExportCSV(df_text=sentiment_df, df_num=numeric_df)
-            messagebox.showinfo("Analysis Completed","Analysis Completed Successfully!")
-
-            self.find_and_open_twbx()
+            
+            if not self.non_fatal_warning:
+                messagebox.showinfo("Analysis Completed", "Analysis Completed Successfully!")
+                self.analyse_button.config(state="normal", bg='white', fg='green')
+            else:
+                messagebox.showinfo("Analysis Completed without Topic Modelling", "Analysis completed without Topic Modelling. Check logs for details.")
+                self.analyse_button.config(state="normal", bg='white', fg='green')
 
         except ValueError as e:
             error_msg = f"Error parsing date: {e}"
             logging.error(error_msg)
             messagebox.showerror("Date Error", error_msg)
-            self.analyse_button.config(state="normal", bg='white', fg='green')
-            self.status_label.config(text="")
+            self.analyse_button.config(state="normal", bg='white', fg='green')  # Re-enable on error
 
         except Exception as e:
             error_msg = f"Unexpected error: {e}"
             logging.error(error_msg)
             messagebox.showerror("Unexpected Error", error_msg)
-            self.analyse_button.config(state="normal", bg='white', fg='green')
-            self.status_label.config(text="")
+            self.analyse_button.config(state="normal", bg='white', fg='green')  # Re-enable on error
+
+        self.status_label.config(text="Opening dashboard...")
+        logging.info("Export Completed!")
+        self.find_and_open_twbx()
 
     def find_and_open_twbx(self):
         # Define the target file name
@@ -257,8 +279,6 @@ class SentiMemeApp:
         # Check if file exists
         if not twbx_file.exists():
             messagebox.showwarning("No File Found", f"'{filename}' not found. Please ensure it is in the same folder as the .exe.")
-            self.analyse_button.config(state="normal", bg='white', fg='green')
-            self.status_label.config(text="")
             return
 
         try:
@@ -272,14 +292,15 @@ class SentiMemeApp:
             else:  # Linux/Unix
                 subprocess.run(["xdg-open", str(twbx_file)])
 
-            self.status_label.config(text="Done!")
-
             logging.info(f"Opened .twbx file: {twbx_file}")
+            self.status_label.config(text="Done!")
+            self.root.after(5000, lambda: self.status_label.config(text=""))  # Clear status after 5 seconds
 
         except Exception as e:
             logging.error(f"Failed to open .twbx: {e}")
             messagebox.showerror("Error", f"Failed to open the .twbx file:\n{e}")
-            self.analyse_button.config(state="normal", bg='white', fg='green')
+            if not self.non_fatal_warning:
+                self.analyse_button.config(state="normal", bg='white', fg='green')
             self.status_label.config(text="")
 
     def update_dropdown(self, event=None):

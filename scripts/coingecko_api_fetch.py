@@ -25,7 +25,7 @@ class CoingeckoFetchAPI:
             logging.info("Coingecko API fetch successful!")
             return self.response
         else:
-            raise ValueError(f"Coingecko API Error: {self.response}")
+            raise ValueError(f"Please check your ticker input {self.response}")
 
     #Factory Methods
     @classmethod

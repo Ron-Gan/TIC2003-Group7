@@ -13,6 +13,9 @@ class NumericSubsystem:
         self.start = datetime.timestamp(start)
         self.end = datetime.timestamp(end)
         self.coin_name = coin_name
+        if self.start > self.end:
+            logging.error(f"Start date later than end date.")
+            raise ValueError("Numeric Subsystem error. Start date later than end date.")
 
     def get_numeric_data_df(self):
         try:

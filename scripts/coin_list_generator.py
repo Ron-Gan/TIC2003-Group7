@@ -23,13 +23,9 @@ class CoinListGenerator:
             if not self.coin_masterlist:
                 raise RuntimeError("Coingecko API error.")
 
-        except requests.exceptions.ConnectionError:
-            logging.error("No internet connection detected.")
-            raise RuntimeError("No internet connection. Please connect and restart.")
-
         except Exception as e:
             logging.error(f"Unexpected error: {e}")
-            raise RuntimeError("Failed to generate coin list. Check your internet or API.") from e
+            raise RuntimeError(f"Failed to generate coin list. {e}") from e
 
     # Calls CoinGecko API for list of coins
     def extract_data(self):

@@ -1,6 +1,5 @@
 from scripts.coingecko_api_fetch import CoingeckoFetchAPI
 import logging
-import requests  # To check for connectivity issues
 
 class CoinListGenerator:
     def __init__(self):

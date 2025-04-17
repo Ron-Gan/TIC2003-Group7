@@ -82,4 +82,4 @@ class NumericSubsystem:
 
         except Exception as e:
             logging.error(f"Coingecko Input Error: {e}")
-            raise RuntimeError("Coingecko Input Error.") from e
+            raise RuntimeError(f"Coingecko API Error. {e}") from e

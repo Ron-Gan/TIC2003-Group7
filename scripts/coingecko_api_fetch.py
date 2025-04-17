@@ -13,7 +13,11 @@ class CoingeckoFetchAPI:
             "accept": "application/json",
             "x-cg-demo-api-key": self.api_key
         }
-        self.response = requests.get(self.url, headers=self.headers)
+        try:
+            self.response = requests.get(self.url, headers=self.headers)
+        except requests.exceptions.ConnectionError:
+            logging.error("No internet connection detected.")
+            raise RuntimeError("No internet connection. Please connect and restart.")
 
 
     def retrieve_response(self):

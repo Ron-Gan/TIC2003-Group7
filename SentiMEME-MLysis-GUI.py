@@ -7,8 +7,6 @@ from datetime import datetime, time, timedelta
 from pathlib import Path
 import os
 import subprocess
-from scripts.topic_model import RedditTopicModel
-from scripts.sentiment_analysis import RedditSentimentAnalysis
 
 with open("logfile.log", "w") as log_file:
     log_file.write("")  # Clears the log file
@@ -193,6 +191,7 @@ class SentiMemeApp:
 
             # Reddit Extraction
             from scripts.reddit_api_fetch import RedditAPI
+
             reddit_api = RedditAPI(subreddit, [ticker], start_datetime, end_datetime)
             reddit_df = reddit_api.search_subreddit()
             if reddit_df.empty:
@@ -201,6 +200,7 @@ class SentiMemeApp:
 
             # Topic Modelling
             try:
+                from scripts.topic_model import RedditTopicModel
                 topic_model = RedditTopicModel(reddit_df)
                 topic_model.initialize_model()
                 topic_model.fit_transform()
@@ -214,6 +214,7 @@ class SentiMemeApp:
                 topic_df["topic"] = -1
 
             # Sentiment Analysis
+            from scripts.sentiment_analysis import RedditSentimentAnalysis
             sentiment_analysis = RedditSentimentAnalysis(topic_df)
             sentiment_analysis.initialize_model()
             sentiment_analysis.analyze_sentiment(batch_size=16)
